@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Planner</title>
+    <title>Planner</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0a0a0a">
     
@@ -104,8 +104,10 @@
         .boxes-section { display: flex; flex-direction: column; gap: 15px; flex: 1; min-height: 0; }
         .info-box { background: #161616; border-radius: 12px; border: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 90px; }
         .box-textarea { background: #000; border: 1px solid #444; color: #f0f0f0; padding: 8px; border-radius: 6px; width: 100%; min-height: 70px; flex: 1; resize: vertical; font-family: inherit; font-size: 0.85rem; }
-        .checklist-items { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; overflow-y: auto; }
-        .checklist-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+        .checklist-items { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; overflow-y: auto; position: relative; }
+        .checklist-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: grab; padding: 3px 0; }
+        .checklist-item.dragging { opacity: 0.3; }
+        .checklist-drop-indicator { height: 3px; background: var(--accent-color); border-radius: 2px; position: absolute; left: 0; right: 0; display: none; pointer-events: none; z-index: 5; }
         .checklist-item input[type="checkbox"] { accent-color: var(--accent-color); width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
         .checklist-item .item-text { flex: 1; word-break: break-word; }
         .checklist-item .item-text.done { text-decoration: line-through; color: #666; }
@@ -567,14 +569,19 @@
             }
             const itemsArr = Object.entries(cfg.items).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
             const itemsHtml = itemsArr.map(([id, it]) => `
-                <div class="checklist-item">
+                <div class="checklist-item" draggable="true" data-id="${id}"
+                     ondragstart="handleBoxItemDragStart(event, ${i}, '${suffix}', '${id}')"
+                     ondragend="handleBoxItemDragEnd(${i}, '${suffix}')">
                     <input type="checkbox" ${it.done ? 'checked' : ''} onchange="toggleBoxItem(${i}, '${id}', this.checked)">
                     <span class="item-text ${it.done ? 'done' : ''}">${escapeHtml(it.text)}</span>
                     <button class="del-item-btn" onclick="deleteBoxItem(${i}, '${id}')">✕</button>
                 </div>
             `).join('');
             return `
-                <div class="checklist-items">${itemsHtml || '<div style="color:#555; font-size:0.8rem;">No items yet.</div>'}</div>
+                <div class="checklist-items" id="checklistItems-${i}${suffix}" ondragover="handleBoxItemDragOver(event, ${i}, '${suffix}')" ondrop="handleBoxItemDrop(event, ${i}, '${suffix}')">
+                    <div class="checklist-drop-indicator" id="checklistDropIndicator-${i}${suffix}"></div>
+                    ${itemsHtml || '<div style="color:#555; font-size:0.8rem;">No items yet.</div>'}
+                </div>
                 <div class="add-item-row">
                     <input type="text" class="search-input" id="boxNewItem-${i}${suffix}" placeholder="Add item..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); addBoxItem(${i}, '${suffix}'); }">
                     <button onclick="addBoxItem(${i}, '${suffix}')">+</button>
@@ -666,6 +673,78 @@
 
         function deleteBoxItem(i, id) {
             db.ref(`boxes/${i}/items/${id}`).remove();
+        }
+
+        let draggedBoxItem = null;
+
+        function handleBoxItemDragStart(e, i, suffix, id) {
+            draggedBoxItem = { boxIndex: i, suffix, itemId: id };
+            e.currentTarget.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', id);
+        }
+
+        function handleBoxItemDragEnd(i, suffix) {
+            const container = document.getElementById(`checklistItems-${i}${suffix}`);
+            if (container) container.querySelectorAll('.checklist-item.dragging').forEach(el => el.classList.remove('dragging'));
+            const indicator = document.getElementById(`checklistDropIndicator-${i}${suffix}`);
+            if (indicator) indicator.style.display = 'none';
+            draggedBoxItem = null;
+        }
+
+        function handleBoxItemDragOver(e, i, suffix) {
+            e.preventDefault();
+            if (!draggedBoxItem || draggedBoxItem.boxIndex !== i || draggedBoxItem.suffix !== suffix) return;
+
+            const container = document.getElementById(`checklistItems-${i}${suffix}`);
+            const indicator = document.getElementById(`checklistDropIndicator-${i}${suffix}`);
+            const items = [...container.querySelectorAll('.checklist-item')];
+
+            if (items.length === 0) { indicator.style.display = 'none'; return; }
+
+            const afterElement = items.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = e.clientY - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+                else return closest;
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+
+            indicator.style.display = 'block';
+            if (afterElement) {
+                indicator.style.top = (afterElement.offsetTop - 5) + 'px';
+                container.dataset.dropIdx = items.indexOf(afterElement);
+            } else {
+                const lastItem = items[items.length - 1];
+                indicator.style.top = (lastItem.offsetTop + lastItem.offsetHeight + 2) + 'px';
+                container.dataset.dropIdx = items.length;
+            }
+        }
+
+        function handleBoxItemDrop(e, i, suffix) {
+            e.preventDefault();
+            const indicator = document.getElementById(`checklistDropIndicator-${i}${suffix}`);
+            if (indicator) indicator.style.display = 'none';
+            if (!draggedBoxItem || draggedBoxItem.boxIndex !== i || draggedBoxItem.suffix !== suffix) { draggedBoxItem = null; return; }
+
+            const container = document.getElementById(`checklistItems-${i}${suffix}`);
+            const dropIdx = Number(container.dataset.dropIdx || 0);
+
+            const cfg = getBoxConfig(i);
+            const itemsArr = Object.entries(cfg.items).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
+            const draggedIdx = itemsArr.findIndex(([id]) => id === draggedBoxItem.itemId);
+
+            if (draggedIdx === -1) { draggedBoxItem = null; return; }
+
+            const [draggedEntry] = itemsArr.splice(draggedIdx, 1);
+            let finalIdx = dropIdx > draggedIdx ? dropIdx - 1 : dropIdx;
+            if (finalIdx < 0) finalIdx = 0;
+            if (finalIdx > itemsArr.length) finalIdx = itemsArr.length;
+            itemsArr.splice(finalIdx, 0, draggedEntry);
+
+            const updates = {};
+            itemsArr.forEach(([id], idx) => { updates[`boxes/${i}/items/${id}/order`] = idx; });
+            db.ref().update(updates);
+
+            draggedBoxItem = null;
         }
 
         function renderBoxSettingsFields() {

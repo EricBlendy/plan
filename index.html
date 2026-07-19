@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planner</title>
+    <title>Task Planner</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0a0a0a">
     
@@ -420,8 +420,16 @@
         const db = firebase.database();
         const auth = firebase.auth();
 
+        function todayLocalKey() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
         let currentNavDate = new Date();
-        let selectedDateKey = new Date().toISOString().split('T')[0];
+        let selectedDateKey = todayLocalKey();
         let currentFilter = { type: 'date', val: [selectedDateKey] };
         let activeWeekIdx = null, allTaskDates = new Set(), draggedTaskId = null, cachedTasks = [], dropTargetIdx = -1;
         let deepLinkTaskId = new URLSearchParams(window.location.search).get('taskId');
@@ -829,7 +837,7 @@
             const sort = document.getElementById('mainSort').value;
             const overdueOnly = document.getElementById('overdueOnly').checked;
             const ignorePast = document.getElementById('ignorePast').checked;
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = todayLocalKey();
             let active = [], completed = [], catCounts = {}, locCounts = {};
 
             cachedTasks.forEach(t => {
@@ -1003,7 +1011,7 @@
                     else {
                         const dKey = `${year}-${String(month+1).padStart(2,'0')}-${String(dayCounter).padStart(2,'0')}`;
                         weekDates.push(dKey);
-                        div.className = `day-cell ${currentFilter.type === 'date' && dKey === selectedDateKey ? 'active' : ''} ${dKey === new Date().toISOString().split('T')[0] ? 'today' : ''} ${allTaskDates.has(dKey) ? 'has-tasks' : ''}`;
+                        div.className = `day-cell ${currentFilter.type === 'date' && dKey === selectedDateKey ? 'active' : ''} ${dKey === todayLocalKey() ? 'today' : ''} ${allTaskDates.has(dKey) ? 'has-tasks' : ''}`;
                         div.innerText = dayCounter;
                         div.onclick = () => { selectedDateKey = dKey; activeWeekIdx = null; currentFilter = {type:'date', val:[dKey]}; renderCalendar(); runSearch(); };
                         div.ondragover = (e) => { e.preventDefault(); div.classList.add('drag-over'); };
@@ -1138,7 +1146,7 @@
                     closeBoxFocus();
                 } else {
                     // RETURN TO CURRENT DAY LOGIC
-                    selectedDateKey = new Date().toISOString().split('T')[0];
+                    selectedDateKey = todayLocalKey();
                     currentNavDate = new Date();
                     activeWeekIdx = null;
                     currentFilter = { type: 'date', val: [selectedDateKey] };

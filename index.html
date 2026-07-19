@@ -28,8 +28,8 @@
         }
         .search-input { background: #000; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; width: 100%; }
 
-        .main-container { display: grid; grid-template-columns: 420px 1fr; grid-template-rows: 1fr; gap: 20px; flex-grow: 1; overflow: visible; min-height: 0; }
-        .left-col { display: flex; flex-direction: column; gap: 15px; min-height: 0; }
+        .main-container { display: flex; flex-wrap: wrap; align-items: stretch; gap: 20px; flex-grow: 1; overflow: visible; min-height: 0; }
+        .left-col { display: flex; flex-direction: column; gap: 15px; min-height: 0; flex: 1 1 380px; max-width: 480px; min-width: 280px; }
         .calendar-section { background: #161616; border-radius: 12px; border: 1px solid #333; padding: 15px; }
         .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--accent-color); font-weight: bold; }
         
@@ -50,7 +50,7 @@
         
         .has-tasks::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; background-color: var(--accent-color); border-radius: 50%; }
 
-        .task-section { background: #161616; border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+        .task-section { background: #161616; border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; padding: 20px; overflow: hidden; flex: 3 1 420px; min-width: 300px; }
         #task-list { flex-grow: 1; overflow-y: auto; padding: 5px 15px 5px 5px; margin: 0 -5px; position: relative; }
         
         .task-tile { 
@@ -74,8 +74,8 @@
         .task-tile.expanded .tile-notes { max-height: 500px; opacity: 1; margin-top: 10px; padding: 10px; border-radius: 4px; }
 
         .btn-tile { 
-            width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;
-            background: #222; border: 1px solid #444; color: white; border-radius: 6px; cursor: pointer; font-size: 0.9rem;
+            width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center;
+            background: #222; border: 1px solid #444; color: white; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
         }
         .btn-tile:hover { background: var(--accent-color); }
 
@@ -103,7 +103,6 @@
 
         .boxes-section { display: flex; flex-direction: column; gap: 15px; flex: 1; min-height: 0; }
         .info-box { background: #161616; border-radius: 12px; border: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 90px; }
-        .info-box-header { color: var(--accent-color); font-weight: bold; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; }
         .box-textarea { background: #000; border: 1px solid #444; color: #f0f0f0; padding: 8px; border-radius: 6px; width: 100%; min-height: 70px; flex: 1; resize: vertical; font-family: inherit; font-size: 0.85rem; }
         .checklist-items { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; overflow-y: auto; }
         .checklist-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
@@ -119,42 +118,61 @@
         .box-settings-row { border-top: 1px solid #333; padding-top: 10px; margin-top: 4px; display: flex; flex-direction: column; gap: 8px; }
         .box-settings-row-header { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
         .box-settings-fields { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+
+        .collapse-toggle-btn { background: #1a1a1a; border: 1px solid #333; color: var(--accent-color); border-radius: 6px; width: 26px; height: 26px; min-width: 26px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; }
+        .collapse-toggle-btn:hover { background: #222; }
+
+        .calendar-section.collapsed { padding-bottom: 12px; }
+        .calendar-section.collapsed .cal-header { margin-bottom: 0; }
+        .calendar-section.collapsed .cal-grid { display: none; }
+
+        .info-box-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
+        .info-box-title-btn { background: none; border: none; color: var(--accent-color); font-weight: bold; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; padding: 0; text-align: left; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .info-box-title-btn:hover { text-decoration: underline; }
+        .info-box.collapsed { flex: 0 0 auto; min-height: 0; padding: 12px 15px; }
+        .info-box.collapsed .info-box-body { display: none; }
+        .info-box-body { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 8px; }
+
+        .box-focus-body { display: flex; flex-direction: column; gap: 8px; }
+        .box-focus-body .box-textarea { min-height: 320px; }
+        .box-focus-body .checklist-items { max-height: 55vh; overflow-y: auto; }
         
         .tile-color-1 { border-left-color: #ff5555 !important; }
         .tile-color-2 { border-left-color: #55ff55 !important; }
         .tile-color-3 { border-left-color: #5588ff !important; }
         .tile-color-4 { border-left-color: #ffff55 !important; }
 
-        @media (max-width: 1100px) {
-            .main-container { grid-template-columns: 320px 1fr; gap: 15px; }
-        }
+        .btn-label-short { display: none; }
 
-        @media (max-width: 1000px) {
+        @media (max-width: 700px) {
             body { padding: 12px; height: auto; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
             header { flex-wrap: wrap; gap: 10px; }
             header > div { flex-wrap: wrap; width: 100%; }
             header .btn { flex: 1; min-width: 100px; text-align: center; }
             h1 { font-size: 1.4rem; }
             #search-drawer { grid-template-columns: 1fr; }
-            .main-container { display: flex; flex-direction: column; overflow: visible; gap: 15px; }
-            .left-col { min-height: auto; }
+            .left-col { max-width: none; }
             .boxes-section { flex: none; }
             .info-box { flex: none; min-height: 0; }
             .box-textarea { flex: none; min-height: 80px; }
             .checklist-items { flex: none; max-height: 220px; }
-            .task-section { min-height: 400px; flex-grow: 0; }
+            .task-section { min-height: 400px; }
             #task-list { max-height: 60vh; }
             .modal { width: 92vw; }
+            .btn-label-full { display: none; }
+            .btn-label-short { display: inline; }
         }
 
         @media (max-width: 460px) {
             body { padding: 8px; }
             h1 { font-size: 1.15rem; letter-spacing: 1px; }
             header .btn { font-size: 0.75rem; padding: 8px 10px !important; }
+            #connStatus { font-size: 0.75rem; padding: 8px 10px; }
             .cal-grid { gap: 3px; }
             .day-cell { font-size: 0.75rem; }
             .week-btn { width: 28px; height: 28px; font-size: 0.6rem; }
             .tile-meta { flex-wrap: wrap; row-gap: 4px; }
+            #viewTitle { font-size: 0.82rem; }
         }
 
         @media print {
@@ -194,8 +212,8 @@
     <header>
         <h1 id="app-title">Task Planner</h1>
         <div style="display:flex; gap:10px; align-items:center;">
-            <span id="connStatus" style="font-size:0.75rem; padding:6px 10px; border-radius:6px; background:#1a1a1a; border:1px solid #333; white-space:nowrap;">🟢 Online</span>
-            <button class="btn" style="background:var(--accent-color); border:none; color:white; padding: 8px 15px; border-radius: 6px; font-weight:bold; cursor:pointer;" onclick="openCreateModal()">+ CREATE NEW TASK</button>
+            <span id="connStatus" style="font-size:1rem; padding:8px 15px; border-radius:6px; background:#1a1a1a; border:1px solid #333; white-space:nowrap; display:inline-flex; align-items:center; line-height:1.2;">🟢 Online</span>
+            <button class="btn" style="background:var(--accent-color); border:none; color:white; padding: 8px 15px; border-radius: 6px; font-weight:bold; cursor:pointer;" onclick="openCreateModal()"><span class="btn-label-full">+ CREATE NEW TASK</span><span class="btn-label-short">+ NEW TASK</span></button>
             <button class="btn" style="background:#222; border:1px solid #444; color:white; padding: 8px 15px; border-radius: 6px; cursor:pointer;" onclick="toggleSearch()">🔍 Search</button>
             <button class="btn" style="background:#222; border:1px solid #444; color:white; padding: 8px 15px; border-radius: 6px; cursor:pointer;" onclick="openSettings()">⚙️ Settings</button>
             <button class="btn" style="background:#222; border:1px solid #444; color:white; padding: 8px 15px; border-radius: 6px; cursor:pointer;" onclick="doLogout()">🚪 Sign Out</button>
@@ -212,9 +230,12 @@
         <div class="left-col">
             <div class="calendar-section">
                 <div class="cal-header">
-                    <button style="background:none; border:none; color:white; cursor:pointer;" onclick="changeMonth(-1)">◀</button>
-                    <div id="monthDisplay">Month Year</div>
-                    <button style="background:none; border:none; color:white; cursor:pointer;" onclick="changeMonth(1)">▶</button>
+                    <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="changeMonth(-1)">◀</button>
+                        <div id="monthDisplay" style="flex:1; text-align:center;">Month Year</div>
+                        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="changeMonth(1)">▶</button>
+                    </div>
+                    <button class="collapse-toggle-btn" id="calCollapseBtn" onclick="toggleCalendarCollapse()" title="Collapse calendar">▾</button>
                 </div>
                 <div class="cal-grid" id="calendarGrid">
                     <div></div>
@@ -226,9 +247,9 @@
         </div>
 
         <div class="task-section">
-            <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid var(--accent-color); padding-bottom:10px; margin-bottom:20px;">
-                <h2 id="viewTitle" style="margin:0; font-size: 1.2rem;">Today</h2>
-                <div style="display:flex; align-items:center; gap:10px;">
+            <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid var(--accent-color); padding-bottom:10px; margin-bottom:20px; gap:10px; flex-wrap:nowrap;">
+                <h2 id="viewTitle" style="margin:0; font-size: 0.95rem; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:1; min-width:0;">Today</h2>
+                <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                     <select id="mainSort" class="search-input" style="width: auto; padding: 4px 8px; font-size: 0.75rem;" onchange="runSearch()">
                         <option value="manual">Manual Order</option>
                         <option value="chrono">Chronological Order</option>
@@ -236,8 +257,8 @@
                         <option value="newest">Created: Newest</option>
                         <option value="oldest">Created: Oldest</option>
                     </select>
-                    <div id="resultCount" style="font-size: 0.75rem; color: #888;"></div>
-                    <button class="btn" style="padding: 4px 10px; font-size: 0.7rem; background: var(--accent-color); border:none; color:white; border-radius:4px; cursor:pointer;" onclick="window.print()">🖨️ Print</button>
+                    <div id="resultCount" style="font-size: 0.75rem; color: #888; white-space:nowrap;"></div>
+                    <button class="btn" style="padding: 4px 10px; font-size: 0.7rem; background: var(--accent-color); border:none; color:white; border-radius:4px; cursor:pointer; white-space:nowrap;" onclick="window.print()">🖨️ Print</button>
                 </div>
             </div>
             <div id="task-list" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
@@ -247,6 +268,16 @@
                 <div id="category-summary" class="summary-line"></div>
                 <div id="location-summary" class="summary-line"></div>
             </div>
+        </div>
+    </div>
+
+    <div id="box-focus-overlay" class="modal-overlay">
+        <div class="modal" style="max-width: 600px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2 id="boxFocusTitle" style="color:var(--accent-color); margin:0; font-size:1.1rem; text-transform:uppercase; letter-spacing:1px;"></h2>
+                <button class="collapse-toggle-btn" onclick="closeBoxFocus()" title="Close">✕</button>
+            </div>
+            <div id="boxFocusBody" class="box-focus-body"></div>
         </div>
     </div>
 
@@ -330,6 +361,7 @@
                     <option value="🧩">🧩 Puzzle</option>
                     <option value="🎁">🎁 Gift</option>
                     <option value="🛒">🛒 Trolley</option>
+                    <option value="📦">📦 Package</option>
                     <option value="🎉">🎉 Celebration</option>
                     <option value="📒">📒 Notebook</option>
                     <option value="💰">💰 Money</option>
@@ -347,6 +379,8 @@
                     <option value="💀">💀 Skull</option>
                     <option value="👽">👽 Alien</option>
                     <option value="🤖">🤖 Robot</option>
+                    <option value="💁">💁 Info</option>
+                    <option value="💁‍♀️">💁‍♀️ Assistant</option>
                     <option value="👀">👀 Stare</option>
                     <option value="🫦">🫦 Lips</option>
                     <option value="😀">😀 Happy</option>
@@ -391,6 +425,36 @@
         let deepLinkTaskId = new URLSearchParams(window.location.search).get('taskId');
         let tasksListenerAttached = false;
         let boxesData = {};
+        let uiState = { calendarCollapsed: false, boxCollapsed: {} };
+        let focusedBoxIndex = null;
+
+        function loadUiState() {
+            try {
+                const saved = JSON.parse(localStorage.getItem('ui_collapse_state') || '{}');
+                uiState.calendarCollapsed = !!saved.calendarCollapsed;
+                uiState.boxCollapsed = saved.boxCollapsed || {};
+            } catch (e) { /* corrupt or missing, use defaults */ }
+        }
+
+        function saveUiState() {
+            try { localStorage.setItem('ui_collapse_state', JSON.stringify(uiState)); } catch (e) { /* storage unavailable, ignore */ }
+        }
+
+        function toggleCalendarCollapse() {
+            uiState.calendarCollapsed = !uiState.calendarCollapsed;
+            saveUiState();
+            const section = document.querySelector('.calendar-section');
+            const btn = document.getElementById('calCollapseBtn');
+            section.classList.toggle('collapsed', uiState.calendarCollapsed);
+            btn.textContent = uiState.calendarCollapsed ? '▸' : '▾';
+            btn.title = uiState.calendarCollapsed ? 'Expand calendar' : 'Collapse calendar';
+        }
+
+        function toggleBoxCollapse(i) {
+            uiState.boxCollapsed[i] = !uiState.boxCollapsed[i];
+            saveUiState();
+            renderBoxes();
+        }
 
         function escapeHtml(str) {
             return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -477,6 +541,7 @@
             db.ref('boxes').on('value', snap => {
                 boxesData = snap.val() || {};
                 renderBoxes();
+                if (focusedBoxIndex !== null) renderBoxFocus();
                 cacheBoxesLocally();
             }, err => {
                 console.error('Boxes read failed:', err);
@@ -496,48 +561,96 @@
             };
         }
 
+        function buildBoxBodyHtml(i, cfg, suffix) {
+            if (cfg.type === 'text') {
+                return `<textarea class="box-textarea" id="boxText-${i}${suffix}" placeholder="Type here...">${escapeHtml(cfg.content)}</textarea>`;
+            }
+            const itemsArr = Object.entries(cfg.items).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
+            const itemsHtml = itemsArr.map(([id, it]) => `
+                <div class="checklist-item">
+                    <input type="checkbox" ${it.done ? 'checked' : ''} onchange="toggleBoxItem(${i}, '${id}', this.checked)">
+                    <span class="item-text ${it.done ? 'done' : ''}">${escapeHtml(it.text)}</span>
+                    <button class="del-item-btn" onclick="deleteBoxItem(${i}, '${id}')">✕</button>
+                </div>
+            `).join('');
+            return `
+                <div class="checklist-items">${itemsHtml || '<div style="color:#555; font-size:0.8rem;">No items yet.</div>'}</div>
+                <div class="add-item-row">
+                    <input type="text" class="search-input" id="boxNewItem-${i}${suffix}" placeholder="Add item..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); addBoxItem(${i}, '${suffix}'); }">
+                    <button onclick="addBoxItem(${i}, '${suffix}')">+</button>
+                </div>
+            `;
+        }
+
+        function wireBoxBody(i, cfg, suffix) {
+            if (cfg.type !== 'text') return;
+            const el = document.getElementById(`boxText-${i}${suffix}`);
+            if (el) el.addEventListener('input', debounce((e) => {
+                db.ref(`boxes/${i}/content`).set(e.target.value);
+            }, 500));
+        }
+
         function renderBoxes() {
             const count = boxesData.count !== undefined ? Number(boxesData.count) : 2;
             const container = document.getElementById('boxes-section');
+            const active = document.activeElement;
+            const activeMatch = active && active.id && active.id.match(/^boxText-(\d+)$/);
+            const skipIndex = activeMatch ? Number(activeMatch[1]) : -1;
+
+            const existing = {};
+            Array.from(container.children).forEach(el => {
+                const m = (el.id || '').match(/^box-(\d+)$/);
+                if (m) existing[Number(m[1])] = el;
+            });
+
             container.innerHTML = '';
             for (let i = 0; i < count; i++) {
-                const cfg = getBoxConfig(i);
-                const box = document.createElement('div');
-                box.className = 'info-box';
-
-                if (cfg.type === 'text') {
-                    box.innerHTML = `
-                        <div class="info-box-header">${escapeHtml(cfg.title)}</div>
-                        <textarea class="box-textarea" id="boxText-${i}" placeholder="Type here...">${escapeHtml(cfg.content)}</textarea>
-                    `;
-                    container.appendChild(box);
-                    document.getElementById(`boxText-${i}`).addEventListener('input', debounce((e) => {
-                        db.ref(`boxes/${i}/content`).set(e.target.value);
-                    }, 500));
-                } else {
-                    const itemsArr = Object.entries(cfg.items).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
-                    const itemsHtml = itemsArr.map(([id, it]) => `
-                        <div class="checklist-item">
-                            <input type="checkbox" ${it.done ? 'checked' : ''} onchange="toggleBoxItem(${i}, '${id}', this.checked)">
-                            <span class="item-text ${it.done ? 'done' : ''}">${escapeHtml(it.text)}</span>
-                            <button class="del-item-btn" onclick="deleteBoxItem(${i}, '${id}')">✕</button>
-                        </div>
-                    `).join('');
-                    box.innerHTML = `
-                        <div class="info-box-header">${escapeHtml(cfg.title)}</div>
-                        <div class="checklist-items">${itemsHtml || '<div style="color:#555; font-size:0.8rem;">No items yet.</div>'}</div>
-                        <div class="add-item-row">
-                            <input type="text" class="search-input" id="boxNewItem-${i}" placeholder="Add item..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); addBoxItem(${i}); }">
-                            <button onclick="addBoxItem(${i})">+</button>
-                        </div>
-                    `;
-                    container.appendChild(box);
+                if (i === skipIndex && existing[i]) {
+                    container.appendChild(existing[i]);
+                    continue;
                 }
+                const cfg = getBoxConfig(i);
+                const collapsed = !!uiState.boxCollapsed[i];
+                const box = document.createElement('div');
+                box.className = 'info-box' + (collapsed ? ' collapsed' : '');
+                box.id = `box-${i}`;
+                box.innerHTML = `
+                    <div class="info-box-header">
+                        <button class="info-box-title-btn" onclick="openBoxFocus(${i})" title="Open ${escapeHtml(cfg.title)}">${escapeHtml(cfg.title)}</button>
+                        <button class="collapse-toggle-btn" onclick="toggleBoxCollapse(${i})" title="${collapsed ? 'Expand' : 'Collapse'}">${collapsed ? '▸' : '▾'}</button>
+                    </div>
+                    <div class="info-box-body">${buildBoxBodyHtml(i, cfg, '')}</div>
+                `;
+                container.appendChild(box);
+                wireBoxBody(i, cfg, '');
             }
         }
 
-        function addBoxItem(i) {
-            const input = document.getElementById(`boxNewItem-${i}`);
+        function openBoxFocus(i) {
+            focusedBoxIndex = i;
+            renderBoxFocus();
+            document.getElementById('box-focus-overlay').style.display = 'flex';
+        }
+
+        function closeBoxFocus() {
+            document.getElementById('box-focus-overlay').style.display = 'none';
+            focusedBoxIndex = null;
+        }
+
+        function renderBoxFocus() {
+            if (focusedBoxIndex === null) return;
+            const i = focusedBoxIndex;
+            const cfg = getBoxConfig(i);
+            document.getElementById('boxFocusTitle').innerText = cfg.title;
+            const active = document.activeElement;
+            if (active && active.id === `boxText-${i}-focus`) return;
+            document.getElementById('boxFocusBody').innerHTML = buildBoxBodyHtml(i, cfg, '-focus');
+            wireBoxBody(i, cfg, '-focus');
+        }
+
+        function addBoxItem(i, suffix) {
+            suffix = suffix || '';
+            const input = document.getElementById(`boxNewItem-${i}${suffix}`);
             const text = input.value.trim();
             if (!text) return;
             const cfg = getBoxConfig(i);
@@ -618,6 +731,15 @@
             return `${day}${suffix(day)} ${date.toLocaleString('en-US', { month: 'long' })} ${date.getFullYear()}`;
         }
 
+        function formatHeaderDate(dateStr) {
+            if (!dateStr) return "";
+            const [y, m, d] = dateStr.split('-');
+            const date = new Date(y, m - 1, d);
+            const day = date.getDate();
+            const suffix = (d) => { if (d > 3 && d < 21) return 'th'; switch (d % 10) { case 1: return "st"; case 2: return "nd"; case 3: return "rd"; default: return "th"; } };
+            return `${day}${suffix(day)} ${date.toLocaleString('en-US', { month: 'long' })}`;
+        }
+
         function linkifyNotes(text) {
             const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
             return escaped.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:var(--accent-color); text-decoration:underline;" onclick="event.stopPropagation()">$1</a>');
@@ -687,7 +809,7 @@
                 }
 
                 tile.innerHTML = `
-                    <div style="position:absolute; right:15px; top:12px; display:flex; gap:6px;">
+                    <div style="position:absolute; right:10px; top:10px; display:flex; gap:4px;">
                         <button class="btn-tile" onclick="editTile('${t.id}')">✎</button>
                         <button class="btn-tile" onclick="copyTaskLink('${t.id}', event)">🔗</button>
                         <button class="btn-tile" onclick="toggleComplete('${t.id}', ${t.completed})">✓</button>
@@ -695,8 +817,8 @@
                     </div>
                     <div style="display:flex; gap:12px; align-items:center;">
                         <div style="font-size:1.8rem">${t.completed ? '✅' : (t.emoji || '📝')}</div>
-                        <div style="flex:1">
-                            <div class="tile-title">${highlightedTitle}</div>
+                        <div style="flex:1; min-width:0;">
+                            <div class="tile-title" style="padding-right:130px;">${highlightedTitle}</div>
                             <div class="tile-meta">
                                 <span class="tile-tag">${highlightedCategory}</span>
                                 <span style="color:var(--highlight-color)">📍 ${highlightedLocation}</span>
@@ -933,6 +1055,8 @@
                     closeModal();
                 } else if (document.getElementById('settings-overlay').style.display === 'flex') {
                     closeSettings();
+                } else if (document.getElementById('box-focus-overlay').style.display === 'flex') {
+                    closeBoxFocus();
                 } else {
                     // RETURN TO CURRENT DAY LOGIC
                     selectedDateKey = new Date().toISOString().split('T')[0];
@@ -973,6 +1097,13 @@
                 });
             }
         });
+
+        loadUiState();
+        if (uiState.calendarCollapsed) {
+            document.querySelector('.calendar-section').classList.add('collapsed');
+            document.getElementById('calCollapseBtn').textContent = '▸';
+            document.getElementById('calCollapseBtn').title = 'Expand calendar';
+        }
 
         renderCalendar();
     </script>

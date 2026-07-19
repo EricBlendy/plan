@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Planner</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a0a">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -14,7 +16,7 @@
         * { box-sizing: border-box; }
         body { 
             font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #f0f0f0; margin: 0; padding: 20px;
-            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
         }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         h1 { color: var(--accent-color); margin: 0; text-transform: uppercase; font-size: 1.8rem; letter-spacing: 2px; }
@@ -26,8 +28,8 @@
         }
         .search-input { background: #000; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; width: 100%; }
 
-        .main-container { display: grid; grid-template-columns: 420px 1fr; gap: 20px; flex-grow: 1; overflow: hidden; }
-        .left-col { display: flex; flex-direction: column; gap: 15px; }
+        .main-container { display: grid; grid-template-columns: 420px 1fr; grid-template-rows: 1fr; gap: 20px; flex-grow: 1; overflow: visible; min-height: 0; }
+        .left-col { display: flex; flex-direction: column; gap: 15px; min-height: 0; }
         .calendar-section { background: #161616; border-radius: 12px; border: 1px solid #333; padding: 15px; }
         .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--accent-color); font-weight: bold; }
         
@@ -99,11 +101,11 @@
         #app-shell { display: none; }
         .modal { background: #161616; padding: 25px; border-radius: 12px; border: 2px solid var(--accent-color); width: 500px; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
 
-        .boxes-section { display: flex; flex-direction: column; gap: 15px; }
-        .info-box { background: #161616; border-radius: 12px; border: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-        .info-box-header { color: var(--accent-color); font-weight: bold; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
-        .box-textarea { background: #000; border: 1px solid #444; color: #f0f0f0; padding: 8px; border-radius: 6px; width: 100%; min-height: 70px; resize: vertical; font-family: inherit; font-size: 0.85rem; }
-        .checklist-items { display: flex; flex-direction: column; gap: 6px; }
+        .boxes-section { display: flex; flex-direction: column; gap: 15px; flex: 1; min-height: 0; }
+        .info-box { background: #161616; border-radius: 12px; border: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 90px; }
+        .info-box-header { color: var(--accent-color); font-weight: bold; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; }
+        .box-textarea { background: #000; border: 1px solid #444; color: #f0f0f0; padding: 8px; border-radius: 6px; width: 100%; min-height: 70px; flex: 1; resize: vertical; font-family: inherit; font-size: 0.85rem; }
+        .checklist-items { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; overflow-y: auto; }
         .checklist-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
         .checklist-item input[type="checkbox"] { accent-color: var(--accent-color); width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
         .checklist-item .item-text { flex: 1; word-break: break-word; }
@@ -122,6 +124,38 @@
         .tile-color-2 { border-left-color: #55ff55 !important; }
         .tile-color-3 { border-left-color: #5588ff !important; }
         .tile-color-4 { border-left-color: #ffff55 !important; }
+
+        @media (max-width: 1100px) {
+            .main-container { grid-template-columns: 320px 1fr; gap: 15px; }
+        }
+
+        @media (max-width: 1000px) {
+            body { padding: 12px; height: auto; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
+            header { flex-wrap: wrap; gap: 10px; }
+            header > div { flex-wrap: wrap; width: 100%; }
+            header .btn { flex: 1; min-width: 100px; text-align: center; }
+            h1 { font-size: 1.4rem; }
+            #search-drawer { grid-template-columns: 1fr; }
+            .main-container { display: flex; flex-direction: column; overflow: visible; gap: 15px; }
+            .left-col { min-height: auto; }
+            .boxes-section { flex: none; }
+            .info-box { flex: none; min-height: 0; }
+            .box-textarea { flex: none; min-height: 80px; }
+            .checklist-items { flex: none; max-height: 220px; }
+            .task-section { min-height: 400px; flex-grow: 0; }
+            #task-list { max-height: 60vh; }
+            .modal { width: 92vw; }
+        }
+
+        @media (max-width: 460px) {
+            body { padding: 8px; }
+            h1 { font-size: 1.15rem; letter-spacing: 1px; }
+            header .btn { font-size: 0.75rem; padding: 8px 10px !important; }
+            .cal-grid { gap: 3px; }
+            .day-cell { font-size: 0.75rem; }
+            .week-btn { width: 28px; height: 28px; font-size: 0.6rem; }
+            .tile-meta { flex-wrap: wrap; row-gap: 4px; }
+        }
 
         @media print {
             body { background: white !important; color: #111 !important; overflow: visible !important; display: block !important; padding: 15px !important; height: auto !important; }
@@ -159,7 +193,8 @@
     <div id="app-shell">
     <header>
         <h1 id="app-title">Task Planner</h1>
-        <div style="display:flex; gap:10px;">
+        <div style="display:flex; gap:10px; align-items:center;">
+            <span id="connStatus" style="font-size:0.75rem; padding:6px 10px; border-radius:6px; background:#1a1a1a; border:1px solid #333; white-space:nowrap;">🟢 Online</span>
             <button class="btn" style="background:var(--accent-color); border:none; color:white; padding: 8px 15px; border-radius: 6px; font-weight:bold; cursor:pointer;" onclick="openCreateModal()">+ CREATE NEW TASK</button>
             <button class="btn" style="background:#222; border:1px solid #444; color:white; padding: 8px 15px; border-radius: 6px; cursor:pointer;" onclick="toggleSearch()">🔍 Search</button>
             <button class="btn" style="background:#222; border:1px solid #444; color:white; padding: 8px 15px; border-radius: 6px; cursor:pointer;" onclick="openSettings()">⚙️ Settings</button>
@@ -384,14 +419,54 @@
                 document.getElementById('loginPassword').value = '';
                 if (!tasksListenerAttached) {
                     tasksListenerAttached = true;
+                    hydrateFromCache();
                     attachTasksListener();
                     attachBoxesListener();
+                    attachConnectionListener();
                 }
             } else {
                 document.getElementById('login-screen').style.display = 'flex';
                 document.getElementById('app-shell').style.display = 'none';
             }
         });
+
+        function attachConnectionListener() {
+            db.ref('.info/connected').on('value', snap => {
+                const el = document.getElementById('connStatus');
+                if (!el) return;
+                if (snap.val() === true) {
+                    el.textContent = '🟢 Online';
+                    el.style.color = 'var(--highlight-color)';
+                } else {
+                    el.textContent = '🟠 Offline — showing cached data';
+                    el.style.color = '#ffcc00';
+                }
+            });
+        }
+
+        function cacheTasksLocally() {
+            try { localStorage.setItem('cache_tasks', JSON.stringify(cachedTasks)); } catch (e) { /* storage full or unavailable, ignore */ }
+        }
+
+        function cacheBoxesLocally() {
+            try { localStorage.setItem('cache_boxes', JSON.stringify(boxesData)); } catch (e) { /* storage full or unavailable, ignore */ }
+        }
+
+        function hydrateFromCache() {
+            try {
+                const t = localStorage.getItem('cache_tasks');
+                if (t) {
+                    cachedTasks = JSON.parse(t);
+                    allTaskDates.clear();
+                    cachedTasks.forEach(x => { if (!x.completed) allTaskDates.add(x.date); });
+                    renderCalendar(); runSearch();
+                }
+            } catch (e) { /* corrupt cache, ignore and wait for live data */ }
+            try {
+                const b = localStorage.getItem('cache_boxes');
+                if (b) { boxesData = JSON.parse(b); renderBoxes(); }
+            } catch (e) { /* corrupt cache, ignore and wait for live data */ }
+        }
 
         function debounce(fn, delay) {
             let timer;
@@ -402,6 +477,10 @@
             db.ref('boxes').on('value', snap => {
                 boxesData = snap.val() || {};
                 renderBoxes();
+                cacheBoxesLocally();
+            }, err => {
+                console.error('Boxes read failed:', err);
+                alert('Could not load sidebar boxes — check your Firebase database rules include a "boxes" node.');
             });
         }
 
@@ -504,6 +583,7 @@
                 cachedTasks = []; allTaskDates.clear();
                 snap.forEach(c => { const t = c.val(); cachedTasks.push({ id: c.key, ...t }); if (!t.completed) allTaskDates.add(t.date); });
                 renderCalendar(); runSearch();
+                cacheTasksLocally();
                 if (deepLinkTaskId) {
                     const linked = cachedTasks.find(x => x.id === deepLinkTaskId);
                     if (linked) {
@@ -523,6 +603,9 @@
                         }, 100);
                     }
                 }
+            }, err => {
+                console.error('Tasks read failed:', err);
+                alert('Could not load tasks — check your Firebase database rules include a "tasks" node for your account.');
             });
         }
 
@@ -823,7 +906,10 @@
                 if (titleEl) updates[`boxes/${i}/title`] = titleEl.value || BOX_DEFAULTS[i] || `Box ${i + 1}`;
                 if (typeEl) updates[`boxes/${i}/type`] = typeEl.value;
             }
-            db.ref().update(updates);
+            db.ref().update(updates).catch(err => {
+                console.error('Saving box settings failed:', err);
+                alert('Could not save box settings — check your Firebase database rules include a "boxes" node.');
+            });
 
             closeSettings();
         }
@@ -880,6 +966,12 @@
             if(tit) document.getElementById('app-title').innerText = tit;
             if(acc) document.documentElement.style.setProperty('--accent-color', acc);
             if(high) document.documentElement.style.setProperty('--highlight-color', high);
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('service-worker.js').catch(err => {
+                    console.warn('Service worker registration failed (app will still work online):', err);
+                });
+            }
         });
 
         renderCalendar();

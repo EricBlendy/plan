@@ -153,6 +153,7 @@
             header > div { flex-wrap: wrap; width: 100%; }
             header .btn { flex: 1; min-width: 100px; text-align: center; }
             h1 { font-size: 1.4rem; }
+            #app-logo { width: 32px; height: 32px; }
             #search-drawer { grid-template-columns: 1fr; }
             .left-col { max-width: none; }
             .boxes-section { flex: none; }
@@ -169,6 +170,7 @@
         @media (max-width: 460px) {
             body { padding: 8px; }
             h1 { font-size: 1.15rem; letter-spacing: 1px; }
+            #app-logo { width: 26px; height: 26px; border-radius: 6px; }
             header .btn { font-size: 0.75rem; padding: 8px 10px !important; }
             #connStatus { font-size: 0.75rem; padding: 8px 10px; }
             .cal-grid { gap: 3px; }
@@ -213,7 +215,10 @@
 
     <div id="app-shell">
     <header>
-        <h1 id="app-title">Task Planner</h1>
+        <div style="display:flex; align-items:center; gap:12px; min-width:0; flex-wrap:nowrap;">
+            <img id="app-logo" src="favicon.svg" alt="" style="width:40px; height:40px; border-radius:8px; flex-shrink:0;">
+            <h1 id="app-title">Task Planner</h1>
+        </div>
         <div style="display:flex; gap:10px; align-items:center;">
             <span id="connStatus" style="font-size:1rem; padding:8px 15px; border-radius:6px; background:#1a1a1a; border:1px solid #333; white-space:nowrap; display:inline-flex; align-items:center; line-height:1.2;">🟢 Online</span>
             <button class="btn" style="background:var(--accent-color); border:none; color:white; padding: 8px 15px; border-radius: 6px; font-weight:bold; cursor:pointer;" onclick="openCreateModal()"><span class="btn-label-full">+ CREATE NEW TASK</span><span class="btn-label-short">+ NEW TASK</span></button>
@@ -288,6 +293,10 @@
         <div class="modal">
             <h2 style="color:var(--accent-color); margin:0">UI Settings</h2>
             <input type="text" id="setTitle" placeholder="TASK PLANNER" class="search-input">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label>Show Logo</label>
+                <input type="checkbox" id="setShowLogo" style="width:18px; height:18px; accent-color:var(--accent-color); cursor:pointer;">
+            </div>
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <label>Accent Color</label>
                 <input type="color" id="accentPicker">
@@ -1092,6 +1101,7 @@
         
         function openSettings() { 
             document.getElementById('setTitle').value = localStorage.getItem('appTitle') || 'TASK PLANNER';
+            document.getElementById('setShowLogo').checked = localStorage.getItem('showLogo') !== 'false';
             document.getElementById('accentPicker').value = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
             document.getElementById('highlightPicker').value = getComputedStyle(document.documentElement).getPropertyValue('--highlight-color').trim();
             document.getElementById('boxCount').value = boxesData.count !== undefined ? boxesData.count : 2;
@@ -1103,10 +1113,13 @@
 
         function saveSettings() {
             const acc = document.getElementById('accentPicker').value, high = document.getElementById('highlightPicker').value, tit = document.getElementById('setTitle').value || 'TASK PLANNER';
+            const showLogo = document.getElementById('setShowLogo').checked;
             document.documentElement.style.setProperty('--accent-color', acc);
             document.documentElement.style.setProperty('--highlight-color', high);
             document.getElementById('app-title').innerText = tit;
+            document.getElementById('app-logo').style.display = showLogo ? '' : 'none';
             localStorage.setItem('appTitle', tit); localStorage.setItem('accent', acc); localStorage.setItem('highlight', high);
+            localStorage.setItem('showLogo', showLogo ? 'true' : 'false');
 
             const count = Number(document.getElementById('boxCount').value);
             const updates = { 'boxes/count': count };
@@ -1178,6 +1191,7 @@
             if(tit) document.getElementById('app-title').innerText = tit;
             if(acc) document.documentElement.style.setProperty('--accent-color', acc);
             if(high) document.documentElement.style.setProperty('--highlight-color', high);
+            if (localStorage.getItem('showLogo') === 'false') document.getElementById('app-logo').style.display = 'none';
 
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('service-worker.js').catch(err => {

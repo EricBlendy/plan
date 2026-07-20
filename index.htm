@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planner</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a0a">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        :root { --accent-color: #ea2776; --highlight-color: #55ff55; }
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #f0f0f0; margin: 0; padding: 20px;
+            height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
+        }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        h1 { color: var(--accent-color); margin: 0; text-transform: uppercase; font-size: 1.8rem; letter-spacing: 2px; }
+        
+        #search-drawer {
+            display: none; background: #161616; padding: 15px; border-radius: 12px; 
+            border: 1px solid var(--accent-color); margin-bottom: 15px; 
+            grid-template-columns: 1fr auto auto auto; gap: 15px; align-items: center;
+        }
+        .search-input { background: #000; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; width: 100%; }
+
+        .main-container { display: flex; flex-wrap: wrap; align-items: stretch; gap: 20px; flex-grow: 1; overflow: visible; min-height: 0; }
+        .left-col { display: flex; flex-direction: column; gap: 15px; min-height: 0; flex: 1 1 380px; max-width: 480px; min-width: 280px; }
+        .calendar-section { background: #161616; border-radius: 12px; border: 1px solid #333; padding: 15px; }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--accent-color); font-weight: bold; }
+        
+        .cal-grid { display: grid; grid-template-columns: 35px repeat(7, 1fr); gap: 6px; text-align: center; align-items: center; }
+        .day-name { font-size: 0.7rem; color: #666; font-weight: bold; padding-bottom: 5px; }
+        
+        .week-btn { background: #1a1a1a; color: var(--accent-color); border: 1px solid #333; border-radius: 4px; cursor: pointer; font-size: 0.65rem; height: 35px; width: 35px; display: flex; align-items: center; justify-content: center; }
+        .week-btn.active { background: var(--accent-color) !important; color: white !important; }
+
+        .day-cell { 
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
+            background: #222; border-radius: 4px; cursor: pointer; font-size: 0.85rem; 
+            border: 2px solid transparent; color: #f0f0f0; position: relative;
+        }
+        .day-cell.active { background: var(--accent-color) !important; color: white !important; }
+        .day-cell.today { border: 2px solid var(--accent-color); color: var(--accent-color); }
+        .day-cell.drag-over { background: var(--highlight-color) !important; color: #000 !important; font-weight: bold; }
+        
+        .has-tasks::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; background-color: var(--accent-color); border-radius: 50%; }
+
+        .task-section { background: #161616; border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; padding: 20px; overflow: hidden; flex: 3 1 420px; min-width: 300px; }
+        #task-list { flex-grow: 1; overflow-y: auto; padding: 5px 15px 5px 5px; margin: 0 -5px; position: relative; }
+        
+        .task-tile { 
+            background: #222; border-left: 5px solid #444; border-radius: 6px; padding: 12px 15px; 
+            margin-bottom: 12px; position: relative; border-top: 1px solid #333; cursor: grab;
+            transition: opacity 0.2s;
+        }
+        .task-tile.dragging { opacity: 0.3; }
+        .task-tile.is-completed { opacity: 0.4; filter: grayscale(0.5); border-left-color: #55ff55 !important; cursor: default; }
+        
+        #drop-indicator { height: 4px; background: var(--accent-color); border-radius: 2px; position: absolute; width: calc(100% - 20px); display: none; pointer-events: none; z-index: 10; }
+
+        .tile-title { font-weight: bold; font-size: 1.1rem; color: #fff; margin-bottom: 3px; }
+        .tile-meta { font-size: 0.7rem; color: #aaa; display: flex; flex-wrap: wrap; gap: 10px; }
+        .tile-tag { background: #000; padding: 2px 6px; border-radius: 4px; color: var(--accent-color); font-weight: bold; }
+        
+        .tile-notes { 
+            max-height: 0; opacity: 0; transition: all 0.3s ease-out; overflow: hidden;
+            background: #111; font-size: 0.85rem; color: #ccc; white-space: pre-wrap;
+        }
+        .task-tile.expanded .tile-notes { max-height: 500px; opacity: 1; margin-top: 10px; padding: 10px; border-radius: 4px; }
+
+        .btn-tile { 
+            width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center;
+            background: #222; border: 1px solid #444; color: white; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
+        }
+        .btn-tile:hover { background: var(--accent-color); }
+
+        .completed-divider { display: flex; align-items: center; margin: 30px 0 15px 0; color: var(--accent-color); font-size: 0.7rem; font-weight: bold; letter-spacing: 2px; }
+        .completed-divider::after { content: ""; flex: 1; height: 1px; background: #333; margin-left: 15px; }
+
+        .summary-container { margin-top: 15px; padding-top: 10px; border-top: 1px solid #333; }
+        .summary-line { font-size: 0.7rem; color: #777; margin-bottom: 4px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .summary-line b { color: #aaa; }
+
+        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
+
+        #login-screen {
+            position: fixed; top:0; left:0; width:100%; height:100%; background:#0a0a0a; z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #login-screen .login-box {
+            background:#161616; border:1px solid var(--accent-color); border-radius:12px; padding:30px;
+            width: 320px; max-width: 90vw; display:flex; flex-direction:column; gap:12px;
+        }
+        #login-screen h2 { color: var(--accent-color); margin:0 0 5px 0; text-align:center; }
+        #login-error { color:#ff5555; font-size:0.8rem; min-height:1em; text-align:center; }
+        #app-shell { display: none; }
+        .modal { background: #161616; padding: 25px; border-radius: 12px; border: 2px solid var(--accent-color); width: 500px; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+
+        .boxes-section { display: flex; flex-direction: column; gap: 15px; flex: 1; min-height: 0; }
+        .info-box { background: #161616; border-radius: 12px; border: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 90px; }
+        .box-textarea { background: #000; border: 1px solid #444; color: #f0f0f0; padding: 8px; border-radius: 6px; width: 100%; min-height: 70px; flex: 1; resize: vertical; font-family: inherit; font-size: 0.85rem; }
+        .checklist-items { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; overflow-y: auto; position: relative; }
+        .checklist-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: grab; padding: 3px 0; }
+        .checklist-item.dragging { opacity: 0.3; }
+        .checklist-drop-indicator { height: 3px; background: var(--accent-color); border-radius: 2px; position: absolute; left: 0; right: 0; display: none; pointer-events: none; z-index: 5; }
+        .checklist-item input[type="checkbox"] { accent-color: var(--accent-color); width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+        .checklist-item .item-text { flex: 1; word-break: break-word; }
+        .checklist-item .item-text.done { text-decoration: line-through; color: #666; }
+        .checklist-item .del-item-btn { background: none; border: none; color: #666; cursor: pointer; font-size: 0.9rem; padding: 0 4px; }
+        .checklist-item .del-item-btn:hover { color: #ff5555; }
+        .add-item-row { display: flex; gap: 6px; margin-top: 2px; }
+        .add-item-row input { flex: 1; }
+        .add-item-row button { background: var(--accent-color); border: none; color: white; border-radius: 6px; padding: 0 12px; cursor: pointer; font-weight: bold; }
+
+        .box-settings-row { border-top: 1px solid #333; padding-top: 10px; margin-top: 4px; display: flex; flex-direction: column; gap: 8px; }
+        .box-settings-row-header { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .box-settings-fields { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+
+        .collapse-toggle-btn { background: #1a1a1a; border: 1px solid #333; color: var(--accent-color); border-radius: 6px; width: 26px; height: 26px; min-width: 26px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; }
+        .collapse-toggle-btn:hover { background: #222; }
+
+        .calendar-section.collapsed { padding-bottom: 12px; }
+        .calendar-section.collapsed .cal-header { margin-bottom: 0; }
+        .calendar-section.collapsed .cal-grid { display: none; }
+
+        .info-box-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
+        .info-box-title-btn { background: none; border: none; color: var(--accent-color); font-weight: bold; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; padding: 0; text-align: left; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .info-box-title-btn:hover { text-decoration: underline; }
+        .info-box.collapsed { flex: 0 0 auto; min-height: 0; padding: 12px 15px; }
+        .info-box.collapsed .info-box-body { display: none; }
+        .info-box-body { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 8px; }
+
+        .box-focus-body { display: flex; flex-direction: column; gap: 8px; }
+        .box-focus-body .box-textarea { min-height: 320px; }
+        .box-focus-body .checklist-items { max-height: 55vh; overflow-y: auto; }
+        
+        .tile-color-1 { border-left-color: #ff5555 !important; }
+        .tile-color-2 { border-left-color: #55ff55 !important; }
+        .tile-color-3 { border-left-color: #5588ff !important; }
+        .tile-color-4 { border-left-color: #ffff55 !important; }
+
+        .btn-label-short { display: none; }
+
+        @media (max-width: 700px) {
+            body { padding: 12px; height: auto; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
+            header { flex-wrap: wrap; gap: 10px; }
+            header > div { flex-wrap: wrap; width: 100%; }
+            header .btn { flex: 1; min-width: 100px; text-align: center; }
+            h1 { font-size: 1.4rem; }
+            #app-logo { width: 32px; height: 32px; }
+            #search-drawer { grid-template-columns: 1fr; }
+            .left-col { max-width: none; }
+            .boxes-section { flex: none; }
+            .info-box { flex: none; min-height: 0; }
+            .box-textarea { flex: none; min-height: 80px; }
+            .checklist-items { flex: none; max-height: 220px; }
+            .task-section { min-height: 400px; }
+            #task-list { max-height: 60vh; }
+            .modal { width: 92vw; }
+            .btn-label-full { display: none; }
+            .btn-label-short { display: inline; }
+        }
+
+        @media (max-width: 460px) {
+            body { padding: 8px; }
+            h1 { font-size: 1.15rem; letter-spacing: 1px; }
+            #app-logo { width: 26px; height: 26px; border-radius: 6px; }
+            header .btn { font-size: 0.75rem; padding: 8px 10px !important; }
+            #connStatus { font-size: 0.75rem; padding: 8px 10px; }
+            .cal-grid { gap: 3px; }
+            .day-cell { font-size: 0.75rem; }
+            .week-btn { width: 28px; height: 28px; font-size: 0.6rem; }
+            .tile-meta { flex-wrap: wrap; row-gap: 4px; }
+            #viewTitle { font-size: 0.82rem; }
+        }
+
+        @media print {
+            body { background: white !important; color: #111 !important; overflow: visible !important; display: block !important; padding: 15px !important; height: auto !important; }
+            header, .left-col, #search-drawer, .btn-tile, #drop-indicator, .summary-container { display: none !important; }
+            .main-container { display: block !important; }
+            .task-section { border: none !important; width: 100% !important; overflow: visible !important; background: white !important; }
+            #task-list { overflow: visible !important; }
+            .task-tile { page-break-inside: avoid; background: #f9f9f9 !important; border-top-color: #ddd !important; }
+            .tile-title { color: #111 !important; }
+            .tile-meta { color: #555 !important; }
+            .tile-tag { background: #eee !important; color: #c0165a !important; }
+            .tile-notes { max-height: none !important; opacity: 1 !important; margin-top: 10px !important; padding: 10px !important; border-radius: 4px !important; background: #f0f0f0 !important; color: #333 !important; }
+            #viewTitle { color: #111 !important; }
+            .section-header { border-bottom-color: #c0165a !important; }
+            .section-header .btn { display: none !important; }
+            #mainSort, #resultCount { display: none !important; }
+            .is-completed { opacity: 0.5 !important; filter: none !important; }
+            .completed-divider { color: #888 !important; }
+            .completed-divider::after { background: #ccc !important; }
+        }
+    </style>
+</head>
+<body onkeydown="handleGlobalKeys(event)">
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>PLANNER</h2>
+            <input type="email" id="loginEmail" class="search-input" placeholder="Email" autocomplete="username" onkeydown="if(event.key==='Enter'){ event.preventDefault(); doLogin(); }">
+            <input type="password" id="loginPassword" class="search-input" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter'){ event.preventDefault(); doLogin(); }">
+            <div id="login-error"></div>
+            <button class="btn" style="background:var(--accent-color); border:none; color:white; padding: 10px; border-radius: 6px; font-weight:bold; cursor:pointer;" onclick="doLogin()">SIGN IN</button>
+        </div>
+    </div>
+
+    <div id="app-shell">
+    <header>
+        <div style="display:flex; align-items:center; gap:12px; min-width:0; flex-wrap:nowrap;">
+            <svg id="app-logo" viewBox="0 0 64 64" style="width:40px; height:40px; border-radius:8px; flex-shrink:0;">
+                <rect x="3" y="3" width="58" height="58" rx="16" fill="#161616" stroke="var(--accent-color)" stroke-width="5"/>
+                <rect x="21" y="15" width="5" height="11" rx="2.5" fill="var(--accent-color)"/>
+                <rect x="38" y="15" width="5" height="11" rx="2.5" fill="var(--accent-color)"/>
+                <rect x="16" y="20" width="32" height="28" rx="4" fill="none" stroke="var(--accent-color)" stroke-width="4"/>
+                <line x1="16" y1="27" x2="48" y2="27" stroke="var(--accent-color)" stroke-width="4"/>
+                <path d="M23 38 L29 44 L41 30" fill="none" stroke="var(--accent-color)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h1 id="app-title">Planner</h1>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <span id="connStatus" style="font-size:1rem; padding:8px 15px; border-radius:6px; background:#1a1a1a; border:1px solid #333; white-space:nowrap; display:inline-flex; align-items:center; line-height:1.2;">🟢 Online</span>
+            <button class="btn" style="background:var(--accent-color); border:none; color:white; padding: 8px 15px; border-radius: 6px; font-weight:bold; cursor:pointer;" onclick="openCreateModal()"><span class="btn-label-full">+ CREATE NEW TASK</span><span class="btn-label-short">+ NEW TASK</span></button>
+            <button class="btn" style="background:#222; border:1px solid #444; color:white; padding: 8px 15px; border-radius: 6px; cursor:pointer;" onclick="toggleSearch()">🔍 Search</button>
+            <button class="btn" style="background:#222; border:1px solid #444; color:white; padding: 8px 15px; border-radius: 6px; cursor:pointer;" onclick="openSettings()">⚙️ Settings</button>
+            <button class="btn" style="background:#222; border:1px solid #444; color:white; padding: 8px 15px; border-radius: 6px; cursor:pointer;" onclick="doLogout()">🚪 Sign Out</button>
+        </div>
+    </header>
+
+    <div id="search-drawer">
+        <input type="text" id="globalSearch" class="search-input" placeholder="Search keywords..." oninput="runSearch()">
+        <label style="font-size: 0.8rem; cursor:pointer;"><input type="checkbox" id="ignorePast" onchange="runSearch()"> Ignore Past</label>
+        <label style="font-size: 0.8rem; cursor:pointer;"><input type="checkbox" id="overdueOnly" onchange="runSearch()"> Overdue Only</label>
+    </div>
+
+    <div class="main-container">
+        <div class="left-col">
+            <div class="calendar-section">
+                <div class="cal-header">
+                    <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="changeMonth(-1)">◀</button>
+                        <div id="monthDisplay" style="flex:1; text-align:center;">Month Year</div>
+                        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="changeMonth(1)">▶</button>
+                    </div>
+                    <button class="collapse-toggle-btn" id="calCollapseBtn" onclick="toggleCalendarCollapse()" title="Collapse calendar">▾</button>
+                </div>
+                <div class="cal-grid" id="calendarGrid">
+                    <div></div>
+                    <div class="day-name">M</div><div class="day-name">T</div><div class="day-name">W</div>
+                    <div class="day-name">T</div><div class="day-name">F</div><div class="day-name">S</div><div class="day-name">S</div>
+                </div>
+            </div>
+            <div class="boxes-section" id="boxes-section"></div>
+        </div>
+
+        <div class="task-section">
+            <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid var(--accent-color); padding-bottom:10px; margin-bottom:20px; gap:10px; flex-wrap:nowrap;">
+                <h2 id="viewTitle" style="margin:0; font-size: 0.95rem; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:1; min-width:0;">Today</h2>
+                <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                    <select id="mainSort" class="search-input" style="width: auto; padding: 4px 8px; font-size: 0.75rem;" onchange="runSearch()">
+                        <option value="manual">Manual Order</option>
+                        <option value="chrono">Chronological Order</option>
+                        <option value="due">Due Soonest</option>
+                        <option value="newest">Created: Newest</option>
+                        <option value="oldest">Created: Oldest</option>
+                    </select>
+                    <div id="resultCount" style="font-size: 0.75rem; color: #888; white-space:nowrap;"></div>
+                    <button class="btn" style="padding: 4px 10px; font-size: 0.7rem; background: var(--accent-color); border:none; color:white; border-radius:4px; cursor:pointer; white-space:nowrap;" onclick="window.print()">🖨️ Print</button>
+                </div>
+            </div>
+            <div id="task-list" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+                <div id="drop-indicator"></div>
+            </div>
+            <div class="summary-container">
+                <div id="category-summary" class="summary-line"></div>
+                <div id="location-summary" class="summary-line"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="box-focus-overlay" class="modal-overlay">
+        <div class="modal" style="max-width: 600px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2 id="boxFocusTitle" style="color:var(--accent-color); margin:0; font-size:1.1rem; text-transform:uppercase; letter-spacing:1px;"></h2>
+                <button class="collapse-toggle-btn" onclick="closeBoxFocus()" title="Close">✕</button>
+            </div>
+            <div id="boxFocusBody" class="box-focus-body"></div>
+        </div>
+    </div>
+
+    <div id="settings-overlay" class="modal-overlay">
+        <div class="modal">
+            <h2 style="color:var(--accent-color); margin:0">UI Settings</h2>
+            <input type="text" id="setTitle" placeholder="PLANNER" class="search-input">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label>Show Logo</label>
+                <input type="checkbox" id="setShowLogo" style="width:18px; height:18px; accent-color:var(--accent-color); cursor:pointer;">
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label>Accent Color</label>
+                <input type="color" id="accentPicker">
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label>Highlight Color</label>
+                <input type="color" id="highlightPicker">
+            </div>
+
+            <div class="box-settings-row" style="border-top:none; padding-top:0;">
+                <div class="box-settings-row-header">Sidebar Boxes</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label>Number of Boxes</label>
+                    <select id="boxCount" class="search-input" style="width:auto;" onchange="renderBoxSettingsFields()">
+                        <option value="0">0</option><option value="1">1</option>
+                        <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                    </select>
+                </div>
+            </div>
+            <div id="boxConfigFields"></div>
+
+            <button class="btn" style="background:var(--accent-color); color:white; padding:12px; font-weight:bold; border:none; border-radius:6px; cursor:pointer;" onclick="saveSettings()">SAVE & CLOSE</button>
+            <button class="btn" style="background:#444; color:white; padding:12px; font-weight:bold; border:none; border-radius:6px; cursor:pointer;" onclick="restoreToDefault()">RESTORE TO DEFAULT</button>
+            <button class="btn" style="background:#222; color:white; padding:12px; border:1px solid #444; border-radius:6px; cursor:pointer;" onclick="closeSettings()">CANCEL</button>
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <h2 id="modalTitle" style="color:var(--accent-color); margin:0">New Task</h2>
+            <input type="hidden" id="editTaskId">
+            <input type="text" id="taskTitle" placeholder="Title (Required)" class="search-input">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <select id="taskCategory" class="search-input">
+                    <option value="General">General</option>
+                    <option value="Home">Home</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Work">Work</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Reminder">Reminder</option>
+                </select>
+                <input type="text" id="taskLocation" placeholder="Location" class="search-input">
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div>
+                    <label style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: bold; margin-left: 5px;">Assigned</label>
+                    <input type="date" id="taskDate" class="search-input">
+                </div>
+                <div>
+                    <label style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: bold; margin-left: 5px;">Deadline</label>
+                    <input type="date" id="taskDeadline" class="search-input">
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <select id="taskEmoji" class="search-input">
+                    <option value="📝">📝 Note</option>
+                    <option value="📢">📢 Announcement</option>
+                    <option value="🔔">🔔 Alert</option>
+                    <option value="💬">💬 Chat</option>
+                    <option value="🔎">🔎 Search</option>
+                    <option value="💻">💻 Computer</option>
+                    <option value="⏰">⏰ Alarm</option>
+                    <option value="🎙️">🎙️ Microphone</option>
+                    <option value="📻">📻 Radio</option>
+                    <option value="📷">📷 Camera</option>
+                    <option value="📺">📺 Television</option>
+                    <option value="🎮">🎮 Gaming</option>
+                    <option value="🎸">🎸 Music</option>
+                    <option value="🎵">🎵 Audio</option>
+                    <option value="🔋">🔋 Power</option>
+                    <option value="🪫">🪫 Low Power</option>
+                    <option value="🏠">🏠 House</option>
+                    <option value="🔑">🔑 Key</option>
+                    <option value="🧩">🧩 Puzzle</option>
+                    <option value="🎁">🎁 Gift</option>
+                    <option value="🛒">🛒 Trolley</option>
+                    <option value="📦">📦 Package</option>
+                    <option value="🎉">🎉 Celebration</option>
+                    <option value="📒">📒 Notebook</option>
+                    <option value="💰">💰 Money</option>
+                    <option value="💗">💗 Heart</option>
+                    <option value="🚗">🚗 Car</option>
+                    <option value="🐕">🐕 Dog</option>
+                    <option value="🐈">🐈 Cat</option>
+                    <option value="🍔">🍔 Burger</option>
+                    <option value="🍉">🍉 Watermelon</option>
+                    <option value="🔥">🔥 Fire</option>
+                    <option value="💥">💥 Explosion</option>
+                    <option value="💣">💣 Bomb</option>
+                    <option value="🤡">🤡 Clown</option>
+                    <option value="💩">💩 Poop</option>
+                    <option value="💀">💀 Skull</option>
+                    <option value="👽">👽 Alien</option>
+                    <option value="🤖">🤖 Robot</option>
+                    <option value="💁">💁 Info</option>
+                    <option value="💁‍♀️">💁‍♀️ Assistant</option>
+                    <option value="👀">👀 Stare</option>
+                    <option value="🫦">🫦 Lips</option>
+                    <option value="😀">😀 Happy</option>
+                    <option value="🙂">🙂 Good</option>
+                    <option value="🙃">🙃 Silly</option>
+                    <option value="😎">😎 Cool</option>
+                    <option value="😏">😏 Smirk</option>
+                    <option value="😑">😑 Neutral</option>
+                    <option value="🤔">🤔 Think</option>
+                    <option value="🤫">🤫 Secret</option>
+                    <option value="😯">😯 Surprise</option>
+                </select>
+                <select id="taskColor" class="search-input">
+                    <option value="0">Default</option><option value="1">Red</option><option value="2">Green</option><option value="3">Blue</option><option value="4">Yellow</option>
+                </select>
+            </div>
+            <textarea id="taskNotes" placeholder="Notes..." class="search-input" style="min-height:100px;"></textarea>
+            <button class="btn" style="background:var(--accent-color); color:white; padding:12px; font-weight:bold; border:none; border-radius:6px; cursor:pointer;" onclick="saveTask()">SAVE (ENTER)</button>
+            <button class="btn" style="background:#222; border:1px solid #444; color:white; padding:12px; border-radius:6px; cursor:pointer;" onclick="closeModal()">CANCEL</button>
+        </div>
+    </div>
+    </div><!-- /app-shell -->
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGvp9QA7NRJ_Dr5cm5NdRY3KSnNXWFH_g",
+            authDomain: "personal-planner-cf61c.firebaseapp.com",
+            databaseURL: "https://personal-planner-cf61c-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "personal-planner-cf61c",
+            storageBucket: "personal-planner-cf61c.firebasestorage.app",
+            messagingSenderId: "587914402535",
+            appId: "1:587914402535:web:7f581cc6cbbf107b0a2042"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        function todayLocalKey() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        let currentNavDate = new Date();
+        let selectedDateKey = todayLocalKey();
+        let currentFilter = { type: 'date', val: [selectedDateKey] };
+        let activeWeekIdx = null, allTaskDates = new Set(), draggedTaskId = null, cachedTasks = [], dropTargetIdx = -1;
+        let deepLinkTaskId = new URLSearchParams(window.location.search).get('taskId');
+        let tasksListenerAttached = false;
+        let boxesData = {};
+        let uiState = { calendarCollapsed: false, boxCollapsed: {} };
+        let focusedBoxIndex = null;
+
+        function loadUiState() {
+            try {
+                const saved = JSON.parse(localStorage.getItem('ui_collapse_state') || '{}');
+                uiState.calendarCollapsed = !!saved.calendarCollapsed;
+                uiState.boxCollapsed = saved.boxCollapsed || {};
+            } catch (e) { /* corrupt or missing, use defaults */ }
+        }
+
+        function saveUiState() {
+            try { localStorage.setItem('ui_collapse_state', JSON.stringify(uiState)); } catch (e) { /* storage unavailable, ignore */ }
+        }
+
+        function toggleCalendarCollapse() {
+            uiState.calendarCollapsed = !uiState.calendarCollapsed;
+            saveUiState();
+            const section = document.querySelector('.calendar-section');
+            const btn = document.getElementById('calCollapseBtn');
+            section.classList.toggle('collapsed', uiState.calendarCollapsed);
+            btn.textContent = uiState.calendarCollapsed ? '▸' : '▾';
+            btn.title = uiState.calendarCollapsed ? 'Expand calendar' : 'Collapse calendar';
+        }
+
+        function toggleBoxCollapse(i) {
+            uiState.boxCollapsed[i] = !uiState.boxCollapsed[i];
+            saveUiState();
+            renderBoxes();
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+
+        function doLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const pass = document.getElementById('loginPassword').value;
+            const errEl = document.getElementById('login-error');
+            errEl.innerText = '';
+            if (!email || !pass) { errEl.innerText = 'Enter your email and password.'; return; }
+            auth.signInWithEmailAndPassword(email, pass).catch(err => {
+                errEl.innerText = 'Sign in failed. Check your email and password.';
+                console.error(err);
+            });
+        }
+
+        function doLogout() {
+            if (confirm('Sign out?')) auth.signOut();
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-shell').style.display = 'block';
+                document.getElementById('loginPassword').value = '';
+                if (!tasksListenerAttached) {
+                    tasksListenerAttached = true;
+                    hydrateFromCache();
+                    attachTasksListener();
+                    attachBoxesListener();
+                    attachConnectionListener();
+                }
+            } else {
+                document.getElementById('login-screen').style.display = 'flex';
+                document.getElementById('app-shell').style.display = 'none';
+            }
+        });
+
+        function attachConnectionListener() {
+            db.ref('.info/connected').on('value', snap => {
+                const el = document.getElementById('connStatus');
+                if (!el) return;
+                if (snap.val() === true) {
+                    el.textContent = '🟢 Online';
+                    el.style.color = 'var(--highlight-color)';
+                } else {
+                    el.textContent = '🟠 Offline — showing cached data';
+                    el.style.color = '#ffcc00';
+                }
+            });
+        }
+
+        function cacheTasksLocally() {
+            try { localStorage.setItem('cache_tasks', JSON.stringify(cachedTasks)); } catch (e) { /* storage full or unavailable, ignore */ }
+        }
+
+        function cacheBoxesLocally() {
+            try { localStorage.setItem('cache_boxes', JSON.stringify(boxesData)); } catch (e) { /* storage full or unavailable, ignore */ }
+        }
+
+        function hydrateFromCache() {
+            try {
+                const t = localStorage.getItem('cache_tasks');
+                if (t) {
+                    cachedTasks = JSON.parse(t);
+                    allTaskDates.clear();
+                    cachedTasks.forEach(x => { if (!x.completed) allTaskDates.add(x.date); });
+                    renderCalendar(); runSearch();
+                }
+            } catch (e) { /* corrupt cache, ignore and wait for live data */ }
+            try {
+                const b = localStorage.getItem('cache_boxes');
+                if (b) { boxesData = JSON.parse(b); renderBoxes(); }
+            } catch (e) { /* corrupt cache, ignore and wait for live data */ }
+        }
+
+        function debounce(fn, delay) {
+            let timer;
+            return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); };
+        }
+
+        function attachBoxesListener() {
+            db.ref('boxes').on('value', snap => {
+                boxesData = snap.val() || {};
+                renderBoxes();
+                if (focusedBoxIndex !== null) renderBoxFocus();
+                cacheBoxesLocally();
+            }, err => {
+                console.error('Boxes read failed:', err);
+                alert('Could not load sidebar boxes — check your Firebase database rules include a "boxes" node.');
+            });
+        }
+
+        const BOX_DEFAULTS = ['Notes', 'Shopping List', 'Ideas', 'Reminders'];
+
+        function getBoxConfig(i) {
+            const b = boxesData[i] || {};
+            return {
+                title: b.title || BOX_DEFAULTS[i] || `Box ${i + 1}`,
+                type: b.type === 'checklist' ? 'checklist' : 'text',
+                content: b.content || '',
+                items: b.items || {}
+            };
+        }
+
+        function buildBoxBodyHtml(i, cfg, suffix) {
+            if (cfg.type === 'text') {
+                return `<textarea class="box-textarea" id="boxText-${i}${suffix}" placeholder="Type here...">${escapeHtml(cfg.content)}</textarea>`;
+            }
+            const itemsArr = Object.entries(cfg.items).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
+            const itemsHtml = itemsArr.map(([id, it]) => `
+                <div class="checklist-item" draggable="true" data-id="${id}"
+                     ondragstart="handleBoxItemDragStart(event, ${i}, '${suffix}', '${id}')"
+                     ondragend="handleBoxItemDragEnd(${i}, '${suffix}')">
+                    <input type="checkbox" ${it.done ? 'checked' : ''} onchange="toggleBoxItem(${i}, '${id}', this.checked)">
+                    <span class="item-text ${it.done ? 'done' : ''}">${escapeHtml(it.text)}</span>
+                    <button class="del-item-btn" onclick="deleteBoxItem(${i}, '${id}')">✕</button>
+                </div>
+            `).join('');
+            return `
+                <div class="checklist-items" id="checklistItems-${i}${suffix}" ondragover="handleBoxItemDragOver(event, ${i}, '${suffix}')" ondrop="handleBoxItemDrop(event, ${i}, '${suffix}')">
+                    <div class="checklist-drop-indicator" id="checklistDropIndicator-${i}${suffix}"></div>
+                    ${itemsHtml || '<div style="color:#555; font-size:0.8rem;">No items yet.</div>'}
+                </div>
+                <div class="add-item-row">
+                    <input type="text" class="search-input" id="boxNewItem-${i}${suffix}" placeholder="Add item..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); addBoxItem(${i}, '${suffix}'); }">
+                    <button onclick="addBoxItem(${i}, '${suffix}')">+</button>
+                </div>
+            `;
+        }
+
+        function wireBoxBody(i, cfg, suffix) {
+            if (cfg.type !== 'text') return;
+            const el = document.getElementById(`boxText-${i}${suffix}`);
+            if (el) el.addEventListener('input', debounce((e) => {
+                db.ref(`boxes/${i}/content`).set(e.target.value);
+            }, 500));
+        }
+
+        function renderBoxes() {
+            const count = boxesData.count !== undefined ? Number(boxesData.count) : 2;
+            const container = document.getElementById('boxes-section');
+            const active = document.activeElement;
+            const activeMatch = active && active.id && active.id.match(/^boxText-(\d+)$/);
+            const skipIndex = activeMatch ? Number(activeMatch[1]) : -1;
+
+            const existing = {};
+            Array.from(container.children).forEach(el => {
+                const m = (el.id || '').match(/^box-(\d+)$/);
+                if (m) existing[Number(m[1])] = el;
+            });
+
+            container.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                if (i === skipIndex && existing[i]) {
+                    container.appendChild(existing[i]);
+                    continue;
+                }
+                const cfg = getBoxConfig(i);
+                const collapsed = !!uiState.boxCollapsed[i];
+                const box = document.createElement('div');
+                box.className = 'info-box' + (collapsed ? ' collapsed' : '');
+                box.id = `box-${i}`;
+                box.innerHTML = `
+                    <div class="info-box-header">
+                        <button class="info-box-title-btn" onclick="openBoxFocus(${i})" title="Open ${escapeHtml(cfg.title)}">${escapeHtml(cfg.title)}</button>
+                        <button class="collapse-toggle-btn" onclick="toggleBoxCollapse(${i})" title="${collapsed ? 'Expand' : 'Collapse'}">${collapsed ? '▸' : '▾'}</button>
+                    </div>
+                    <div class="info-box-body">${buildBoxBodyHtml(i, cfg, '')}</div>
+                `;
+                container.appendChild(box);
+                wireBoxBody(i, cfg, '');
+            }
+        }
+
+        function openBoxFocus(i) {
+            focusedBoxIndex = i;
+            renderBoxFocus();
+            document.getElementById('box-focus-overlay').style.display = 'flex';
+        }
+
+        function closeBoxFocus() {
+            document.getElementById('box-focus-overlay').style.display = 'none';
+            focusedBoxIndex = null;
+        }
+
+        function renderBoxFocus() {
+            if (focusedBoxIndex === null) return;
+            const i = focusedBoxIndex;
+            const cfg = getBoxConfig(i);
+            document.getElementById('boxFocusTitle').innerText = cfg.title;
+            const active = document.activeElement;
+            if (active && active.id === `boxText-${i}-focus`) return;
+            document.getElementById('boxFocusBody').innerHTML = buildBoxBodyHtml(i, cfg, '-focus');
+            wireBoxBody(i, cfg, '-focus');
+        }
+
+        function addBoxItem(i, suffix) {
+            suffix = suffix || '';
+            const input = document.getElementById(`boxNewItem-${i}${suffix}`);
+            const text = input.value.trim();
+            if (!text) return;
+            const cfg = getBoxConfig(i);
+            const order = Object.keys(cfg.items).length;
+            db.ref(`boxes/${i}/items`).push({ text, done: false, order });
+            input.value = '';
+            input.focus();
+        }
+
+        function toggleBoxItem(i, id, done) {
+            db.ref(`boxes/${i}/items/${id}`).update({ done });
+        }
+
+        function deleteBoxItem(i, id) {
+            db.ref(`boxes/${i}/items/${id}`).remove();
+        }
+
+        let draggedBoxItem = null;
+
+        function handleBoxItemDragStart(e, i, suffix, id) {
+            draggedBoxItem = { boxIndex: i, suffix, itemId: id };
+            e.currentTarget.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', id);
+        }
+
+        function handleBoxItemDragEnd(i, suffix) {
+            const container = document.getElementById(`checklistItems-${i}${suffix}`);
+            if (container) container.querySelectorAll('.checklist-item.dragging').forEach(el => el.classList.remove('dragging'));
+            const indicator = document.getElementById(`checklistDropIndicator-${i}${suffix}`);
+            if (indicator) indicator.style.display = 'none';
+            draggedBoxItem = null;
+        }
+
+        function handleBoxItemDragOver(e, i, suffix) {
+            e.preventDefault();
+            if (!draggedBoxItem || draggedBoxItem.boxIndex !== i || draggedBoxItem.suffix !== suffix) return;
+
+            const container = document.getElementById(`checklistItems-${i}${suffix}`);
+            const indicator = document.getElementById(`checklistDropIndicator-${i}${suffix}`);
+            const items = [...container.querySelectorAll('.checklist-item')];
+
+            if (items.length === 0) { indicator.style.display = 'none'; return; }
+
+            const afterElement = items.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = e.clientY - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+                else return closest;
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+
+            indicator.style.display = 'block';
+            if (afterElement) {
+                indicator.style.top = (afterElement.offsetTop - 5) + 'px';
+                container.dataset.dropIdx = items.indexOf(afterElement);
+            } else {
+                const lastItem = items[items.length - 1];
+                indicator.style.top = (lastItem.offsetTop + lastItem.offsetHeight + 2) + 'px';
+                container.dataset.dropIdx = items.length;
+            }
+        }
+
+        function handleBoxItemDrop(e, i, suffix) {
+            e.preventDefault();
+            const indicator = document.getElementById(`checklistDropIndicator-${i}${suffix}`);
+            if (indicator) indicator.style.display = 'none';
+            if (!draggedBoxItem || draggedBoxItem.boxIndex !== i || draggedBoxItem.suffix !== suffix) { draggedBoxItem = null; return; }
+
+            const container = document.getElementById(`checklistItems-${i}${suffix}`);
+            const dropIdx = Number(container.dataset.dropIdx || 0);
+
+            const cfg = getBoxConfig(i);
+            const itemsArr = Object.entries(cfg.items).sort((a, b) => (a[1].order || 0) - (b[1].order || 0));
+            const draggedIdx = itemsArr.findIndex(([id]) => id === draggedBoxItem.itemId);
+
+            if (draggedIdx === -1) { draggedBoxItem = null; return; }
+
+            const [draggedEntry] = itemsArr.splice(draggedIdx, 1);
+            let finalIdx = dropIdx > draggedIdx ? dropIdx - 1 : dropIdx;
+            if (finalIdx < 0) finalIdx = 0;
+            if (finalIdx > itemsArr.length) finalIdx = itemsArr.length;
+            itemsArr.splice(finalIdx, 0, draggedEntry);
+
+            const updates = {};
+            itemsArr.forEach(([id], idx) => { updates[`boxes/${i}/items/${id}/order`] = idx; });
+            db.ref().update(updates);
+
+            draggedBoxItem = null;
+        }
+
+        function renderBoxSettingsFields() {
+            const count = Number(document.getElementById('boxCount').value);
+            const container = document.getElementById('boxConfigFields');
+            container.innerHTML = '';
+            for (let i = 0; i < 4; i++) {
+                const cfg = getBoxConfig(i);
+                const row = document.createElement('div');
+                row.className = 'box-settings-row';
+                row.style.display = i < count ? 'flex' : 'none';
+                row.innerHTML = `
+                    <div class="box-settings-row-header">Box ${i + 1}</div>
+                    <div class="box-settings-fields">
+                        <input type="text" class="search-input" id="boxTitle-${i}" placeholder="Box title" value="${escapeHtml(cfg.title)}">
+                        <select class="search-input" id="boxType-${i}">
+                            <option value="text" ${cfg.type === 'text' ? 'selected' : ''}>Text Box</option>
+                            <option value="checklist" ${cfg.type === 'checklist' ? 'selected' : ''}>Checklist</option>
+                        </select>
+                    </div>
+                `;
+                container.appendChild(row);
+            }
+        }
+
+        function attachTasksListener() {
+            db.ref('tasks').on('value', snap => {
+                cachedTasks = []; allTaskDates.clear();
+                snap.forEach(c => { const t = c.val(); cachedTasks.push({ id: c.key, ...t }); if (!t.completed) allTaskDates.add(t.date); });
+                renderCalendar(); runSearch();
+                cacheTasksLocally();
+                if (deepLinkTaskId) {
+                    const linked = cachedTasks.find(x => x.id === deepLinkTaskId);
+                    if (linked) {
+                        selectedDateKey = linked.date;
+                        currentNavDate = new Date(linked.date + 'T00:00:00');
+                        activeWeekIdx = null;
+                        currentFilter = { type: 'date', val: [linked.date] };
+                        renderCalendar(); runSearch();
+                        setTimeout(() => {
+                            const tile = document.querySelector(`.task-tile[data-id="${deepLinkTaskId}"]`);
+                            if (tile) {
+                                tile.classList.add('expanded');
+                                tile.style.outline = '2px solid var(--accent-color)';
+                                tile.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                            deepLinkTaskId = null;
+                        }, 100);
+                    }
+                }
+            }, err => {
+                console.error('Tasks read failed:', err);
+                alert('Could not load tasks — check your Firebase database rules include a "tasks" node for your account.');
+            });
+        }
+
+        function formatUserFriendlyDate(dateStr) {
+            if (!dateStr) return "";
+            const [y, m, d] = dateStr.split('-');
+            const date = new Date(y, m - 1, d);
+            const day = date.getDate();
+            const suffix = (d) => { if (d > 3 && d < 21) return 'th'; switch (d % 10) { case 1: return "st"; case 2: return "nd"; case 3: return "rd"; default: return "th"; } };
+            return `${day}${suffix(day)} ${date.toLocaleString('en-US', { month: 'long' })} ${date.getFullYear()}`;
+        }
+
+        function formatHeaderDate(dateStr) {
+            if (!dateStr) return "";
+            const [y, m, d] = dateStr.split('-');
+            const date = new Date(y, m - 1, d);
+            const day = date.getDate();
+            const suffix = (d) => { if (d > 3 && d < 21) return 'th'; switch (d % 10) { case 1: return "st"; case 2: return "nd"; case 3: return "rd"; default: return "th"; } };
+            return `${day}${suffix(day)} ${date.toLocaleString('en-US', { month: 'long' })}`;
+        }
+
+        function linkifyNotes(text) {
+            const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            return escaped.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:var(--accent-color); text-decoration:underline;" onclick="event.stopPropagation()">$1</a>');
+        }
+
+        function runSearch() {
+            const query = document.getElementById('globalSearch').value.toLowerCase();
+            const sort = document.getElementById('mainSort').value;
+            const overdueOnly = document.getElementById('overdueOnly').checked;
+            const ignorePast = document.getElementById('ignorePast').checked;
+            const todayStr = todayLocalKey();
+            let active = [], completed = [], catCounts = {}, locCounts = {};
+
+            cachedTasks.forEach(t => {
+                const isOverdue = t.deadline && t.deadline < todayStr && !t.completed;
+                const isPastTask = t.date < todayStr;
+                let inScope = query ? true : currentFilter.val.includes(t.date);
+                if (inScope && (!query || `${t.title} ${t.category} ${t.location}`.toLowerCase().includes(query))) {
+                    if ((!overdueOnly || isOverdue) && (!ignorePast || !isPastTask)) {
+                        if (t.completed) completed.push(t); else active.push(t);
+                        locCounts[t.location] = (locCounts[t.location] || 0) + 1;
+                        catCounts[t.category] = (catCounts[t.category] || 0) + 1;
+                    }
+                }
+            });
+
+            if (sort === 'due') active.sort((a,b) => (a.deadline || '9999').localeCompare(b.deadline || '9999'));
+            else if (sort === 'newest') active.sort((a,b) => b.created - a.created);
+            else if (sort === 'oldest') active.sort((a,b) => a.created - b.created);
+            else if (sort === 'chrono') active.sort((a,b) => a.date.localeCompare(b.date));
+            else active.sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+            displayResults(active, completed, query, catCounts, locCounts);
+        }
+
+        function displayResults(active, completed, query, catCounts, locCounts) {
+            const list = document.getElementById('task-list'); 
+            const indicator = document.getElementById('drop-indicator');
+            list.innerHTML = ''; list.appendChild(indicator);
+            document.getElementById('resultCount').innerText = `${active.length + completed.length} items`;
+            document.getElementById('viewTitle').innerText = query ? "Search Results" : (currentFilter.type === 'week' ? "Weekly View" : formatUserFriendlyDate(selectedDateKey));
+
+            const renderTile = (t) => {
+                const tile = document.createElement('div');
+                tile.className = `task-tile tile-color-${t.color || 0} ${t.completed ? 'is-completed' : ''}`;
+                tile.dataset.id = t.id;
+                
+                if (!t.completed) {
+                    tile.draggable = true;
+                    tile.ondragstart = (e) => { draggedTaskId = t.id; tile.classList.add('dragging'); e.dataTransfer.setData('text/plain', t.id); };
+                    tile.ondragend = () => { tile.classList.remove('dragging'); indicator.style.display = 'none'; };
+                }
+
+                tile.onclick = (e) => { if(!e.target.closest('button')) tile.classList.toggle('expanded'); };
+
+                let highlightedTitle = escapeHtml(t.title);
+                let highlightedCategory = escapeHtml(t.category || 'General');
+                let highlightedLocation = escapeHtml(t.location || '');
+
+                if (query) {
+                    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+                    const replacement = '<span style="background:var(--accent-color); color:#fff; font-weight:bold; border-radius:3px; padding:0 2px;">$1</span>';
+                    highlightedTitle = highlightedTitle.replace(regex, replacement);
+                    highlightedCategory = highlightedCategory.replace(regex, replacement);
+                    highlightedLocation = highlightedLocation.replace(regex, replacement);
+                }
+
+                tile.innerHTML = `
+                    <div style="position:absolute; right:10px; top:10px; display:flex; gap:4px;">
+                        <button class="btn-tile" onclick="editTile('${t.id}')">✎</button>
+                        <button class="btn-tile" onclick="copyTaskLink('${t.id}', event)">🔗</button>
+                        <button class="btn-tile" onclick="toggleComplete('${t.id}', ${t.completed})">✓</button>
+                        <button class="btn-tile" onclick="deleteTask('${t.id}')">🗑</button>
+                    </div>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <div style="font-size:1.8rem">${t.completed ? '✅' : (t.emoji || '📝')}</div>
+                        <div style="flex:1; min-width:0;">
+                            <div class="tile-title" style="padding-right:130px;">${highlightedTitle}</div>
+                            <div class="tile-meta">
+                                <span class="tile-tag">${highlightedCategory}</span>
+                                <span style="color:var(--highlight-color)">📍 ${highlightedLocation}</span>
+                                <span style="color:#777">📅 ${formatUserFriendlyDate(t.date)}</span>
+                                ${getRemainingTime(t.deadline)}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tile-notes">${linkifyNotes(t.notes || 'No notes.')}</div>
+                `;
+                list.appendChild(tile);
+            };
+            active.forEach(renderTile);
+            if (completed.length) {
+                const div = document.createElement('div'); div.className = 'completed-divider';
+                div.innerHTML = '<span>COMPLETED</span>'; list.appendChild(div);
+                completed.forEach(renderTile);
+            }
+            document.getElementById('category-summary').innerHTML = '<b>Categories:</b> ' + Object.entries(catCounts).map(([k,v]) => `${escapeHtml(k)} (${v})`).join(' | ');
+            document.getElementById('location-summary').innerHTML = '<b>Locations:</b> ' + Object.entries(locCounts).map(([k,v]) => `${escapeHtml(k)} (${v})`).join(' | ');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            const list = document.getElementById('task-list');
+            const indicator = document.getElementById('drop-indicator');
+            const tiles = [...list.querySelectorAll('.task-tile:not(.is-completed)')];
+            
+            if (tiles.length === 0 || !draggedTaskId) { indicator.style.display = 'none'; return; }
+
+            const afterElement = tiles.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = e.clientY - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+                else return closest;
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+
+            indicator.style.display = 'block';
+            if (afterElement) {
+                indicator.style.top = (afterElement.offsetTop - 8) + 'px';
+                dropTargetIdx = tiles.indexOf(afterElement);
+            } else {
+                const lastTile = tiles[tiles.length - 1];
+                indicator.style.top = (lastTile.offsetTop + lastTile.offsetHeight + 4) + 'px';
+                dropTargetIdx = tiles.length;
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('drop-indicator').style.display = 'none';
+            if (!draggedTaskId) return;
+
+            const activeTasks = cachedTasks.filter(t => currentFilter.val.includes(t.date) && !t.completed).sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            const draggedIdx = activeTasks.findIndex(t => t.id === draggedTaskId);
+            
+            if (draggedIdx === -1) return; 
+
+            const [draggedItem] = activeTasks.splice(draggedIdx, 1);
+            let finalIdx = dropTargetIdx > draggedIdx ? dropTargetIdx - 1 : dropTargetIdx;
+            
+            if (finalIdx < 0) finalIdx = 0;
+            if (finalIdx > activeTasks.length) finalIdx = activeTasks.length;
+
+            activeTasks.splice(finalIdx, 0, draggedItem);
+            
+            const updates = {};
+            activeTasks.forEach((t, i) => { updates[`tasks/${t.id}/sortOrder`] = i; });
+            db.ref().update(updates);
+            
+            draggedTaskId = null;
+        }
+
+        function getRemainingTime(d) {
+            if (!d) return "";
+            const t = new Date(); t.setHours(0,0,0,0);
+            const dl = new Date(d + 'T00:00:00');
+            const diff = Math.ceil((dl - t) / 86400000);
+            if (diff < 0) return `<span style="color:#ff5555; font-weight:bold;">⚠️ OVERDUE</span>`;
+            if (diff === 0) return `<span style="color:#ffcc00; font-weight:bold;">🔥 Due Today</span>`;
+            return `<span style="color:var(--highlight-color);">⏰ ${diff}d left</span>`;
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const headers = Array.from(grid.children).slice(0, 8);
+            grid.innerHTML = ''; headers.forEach(h => grid.appendChild(h));
+            const year = currentNavDate.getFullYear(), month = currentNavDate.getMonth();
+            document.getElementById('monthDisplay').innerText = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(currentNavDate);
+            const firstDay = new Date(year, month, 1).getDay(), daysInMonth = new Date(year, month + 1, 0).getDate();
+            let startOffset = (firstDay === 0) ? 6 : firstDay - 1, dayCounter = 1;
+
+            for (let row = 0; row < 6; row++) {
+                if (dayCounter > daysInMonth && row > 0) break;
+                const weekDates = [];
+                const weekBtn = document.createElement('button');
+                weekBtn.className = `week-btn ${activeWeekIdx === row ? 'active' : ''}`;
+                weekBtn.innerText = 'W'+(row+1);
+                grid.appendChild(weekBtn);
+                for (let col = 0; col < 7; col++) {
+                    const div = document.createElement('div');
+                    if (row * 7 + col < startOffset || dayCounter > daysInMonth) { div.className = 'day-cell other-month'; } 
+                    else {
+                        const dKey = `${year}-${String(month+1).padStart(2,'0')}-${String(dayCounter).padStart(2,'0')}`;
+                        weekDates.push(dKey);
+                        div.className = `day-cell ${currentFilter.type === 'date' && dKey === selectedDateKey ? 'active' : ''} ${dKey === todayLocalKey() ? 'today' : ''} ${allTaskDates.has(dKey) ? 'has-tasks' : ''}`;
+                        div.innerText = dayCounter;
+                        div.onclick = () => { selectedDateKey = dKey; activeWeekIdx = null; currentFilter = {type:'date', val:[dKey]}; renderCalendar(); runSearch(); };
+                        div.ondragover = (e) => { e.preventDefault(); div.classList.add('drag-over'); };
+                        div.ondragleave = () => { div.classList.remove('drag-over'); };
+                        div.ondrop = (e) => { e.preventDefault(); div.classList.remove('drag-over'); const id = e.dataTransfer.getData('text/plain'); db.ref(`tasks/${id}`).update({ date: dKey }); };
+                        dayCounter++;
+                    }
+                    grid.appendChild(div);
+                }
+                weekBtn.onclick = () => { activeWeekIdx = row; currentFilter = { type: 'week', val: weekDates }; renderCalendar(); runSearch(); };
+            }
+        }
+
+        function saveTask() {
+            const id = document.getElementById('editTaskId').value;
+            const data = {
+                title: document.getElementById('taskTitle').value,
+                category: document.getElementById('taskCategory').value || 'General',
+                location: document.getElementById('taskLocation').value || '',
+                date: document.getElementById('taskDate').value,
+                deadline: document.getElementById('taskDeadline').value || '',
+                emoji: document.getElementById('taskEmoji').value || '📝',
+                color: document.getElementById('taskColor').value,
+                notes: document.getElementById('taskNotes').value,
+                completed: false,
+                created: id ? cachedTasks.find(x => x.id === id).created : Date.now()
+            };
+            if (!data.title || !data.date) return alert("Title is required");
+            const ref = id ? db.ref(`tasks/${id}`) : db.ref('tasks').push();
+            ref.update(data).then(closeModal);
+        }
+
+        function editTile(id) {
+            const t = cachedTasks.find(x => x.id === id);
+            document.getElementById('modalTitle').innerText = 'Edit Task';
+            document.getElementById('editTaskId').value = id;
+            document.getElementById('taskTitle').value = t.title;
+            document.getElementById('taskCategory').value = t.category;
+            document.getElementById('taskLocation').value = t.location || '';
+            document.getElementById('taskDate').value = t.date;
+            document.getElementById('taskDeadline').value = t.deadline || '';
+            document.getElementById('taskEmoji').value = t.emoji || '📝';
+            document.getElementById('taskColor').value = t.color || '0';
+            document.getElementById('taskNotes').value = t.notes || '';
+            document.getElementById('modal-overlay').style.display = 'flex';
+            
+            // Set focus to title when editing
+            setTimeout(() => document.getElementById('taskTitle').focus(), 50);
+        }
+
+        function copyTaskLink(id, e) { e.stopPropagation(); navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?taskId=${id}`).then(() => alert("Link copied!")); }
+        function toggleComplete(id, cur) { db.ref(`tasks/${id}`).update({ completed: !cur }); }
+        function deleteTask(id) { if(confirm("Delete?")) db.ref(`tasks/${id}`).remove(); }
+        
+        function openCreateModal() { 
+            document.getElementById('modalTitle').innerText = 'New Task'; 
+            document.getElementById('editTaskId').value = ''; 
+            
+            // Default all fields for fresh task
+            document.getElementById('taskTitle').value = ''; 
+            document.getElementById('taskLocation').value = '';
+            document.getElementById('taskNotes').value = '';
+            document.getElementById('taskCategory').value = 'General';
+            document.getElementById('taskEmoji').value = '📝';
+            document.getElementById('taskColor').value = '0';
+            document.getElementById('taskDeadline').value = '';
+            document.getElementById('taskDate').value = selectedDateKey; 
+            
+            document.getElementById('modal-overlay').style.display = 'flex';
+            
+            // Focus title automatically
+            setTimeout(() => document.getElementById('taskTitle').focus(), 50);
+        }
+
+        function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+        function toggleSearch() { const d = document.getElementById('search-drawer'); d.style.display = d.style.display === 'grid' ? 'none' : 'grid'; }
+        
+        function openSettings() { 
+            document.getElementById('setTitle').value = localStorage.getItem('appTitle') || 'PLANNER';
+            document.getElementById('setShowLogo').checked = localStorage.getItem('showLogo') !== 'false';
+            document.getElementById('accentPicker').value = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+            document.getElementById('highlightPicker').value = getComputedStyle(document.documentElement).getPropertyValue('--highlight-color').trim();
+            document.getElementById('boxCount').value = boxesData.count !== undefined ? boxesData.count : 2;
+            renderBoxSettingsFields();
+            document.getElementById('settings-overlay').style.display = 'flex'; 
+        }
+
+        function closeSettings() { document.getElementById('settings-overlay').style.display = 'none'; }
+
+        function saveSettings() {
+            const acc = document.getElementById('accentPicker').value, high = document.getElementById('highlightPicker').value, tit = document.getElementById('setTitle').value || 'PLANNER';
+            const showLogo = document.getElementById('setShowLogo').checked;
+            document.documentElement.style.setProperty('--accent-color', acc);
+            document.documentElement.style.setProperty('--highlight-color', high);
+            document.getElementById('app-title').innerText = tit;
+            document.getElementById('app-logo').style.display = showLogo ? '' : 'none';
+            localStorage.setItem('appTitle', tit); localStorage.setItem('accent', acc); localStorage.setItem('highlight', high);
+            localStorage.setItem('showLogo', showLogo ? 'true' : 'false');
+
+            const count = Number(document.getElementById('boxCount').value);
+            const updates = { 'boxes/count': count };
+            for (let i = 0; i < 4; i++) {
+                const titleEl = document.getElementById(`boxTitle-${i}`);
+                const typeEl = document.getElementById(`boxType-${i}`);
+                if (titleEl) updates[`boxes/${i}/title`] = titleEl.value || BOX_DEFAULTS[i] || `Box ${i + 1}`;
+                if (typeEl) updates[`boxes/${i}/type`] = typeEl.value;
+            }
+            db.ref().update(updates).catch(err => {
+                console.error('Saving box settings failed:', err);
+                alert('Could not save box settings — check your Firebase database rules include a "boxes" node.');
+            });
+
+            closeSettings();
+        }
+
+        function restoreToDefault() {
+            const acc = '#ea2776', high = '#55ff55', tit = 'PLANNER';
+            document.documentElement.style.setProperty('--accent-color', acc);
+            document.documentElement.style.setProperty('--highlight-color', high);
+            document.getElementById('app-title').innerText = tit;
+            document.getElementById('setTitle').value = tit;
+            document.getElementById('accentPicker').value = acc;
+            document.getElementById('highlightPicker').value = high;
+            localStorage.setItem('appTitle', tit); localStorage.setItem('accent', acc); localStorage.setItem('highlight', high);
+        }
+
+        function changeMonth(dir) { currentNavDate.setMonth(currentNavDate.getMonth() + dir); renderCalendar(); }
+        
+        function handleGlobalKeys(e) { 
+            if (e.key === 'Escape') {
+                if (document.getElementById('modal-overlay').style.display === 'flex') {
+                    closeModal();
+                } else if (document.getElementById('settings-overlay').style.display === 'flex') {
+                    closeSettings();
+                } else if (document.getElementById('box-focus-overlay').style.display === 'flex') {
+                    closeBoxFocus();
+                } else {
+                    // RETURN TO CURRENT DAY LOGIC
+                    selectedDateKey = todayLocalKey();
+                    currentNavDate = new Date();
+                    activeWeekIdx = null;
+                    currentFilter = { type: 'date', val: [selectedDateKey] };
+                    
+                    // Clear search
+                    document.getElementById('globalSearch').value = '';
+                    document.getElementById('search-drawer').style.display = 'none';
+                    
+                    renderCalendar();
+                    runSearch();
+                }
+            } else if (e.key === 'Enter') {
+                if (document.activeElement.id === 'taskNotes') {
+                    // Let Enter work normally in the notes textarea (newlines)
+                    return;
+                } else if (document.getElementById('modal-overlay').style.display === 'flex') {
+                    // Save if modal is open
+                    saveTask();
+                } else if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    // Open create modal if in main view and not in input
+                    openCreateModal();
+                }
+            }
+        }
+
+        window.addEventListener('load', () => {
+            const tit = localStorage.getItem('appTitle'), acc = localStorage.getItem('accent'), high = localStorage.getItem('highlight');
+            if(tit) document.getElementById('app-title').innerText = tit;
+            if(acc) document.documentElement.style.setProperty('--accent-color', acc);
+            if(high) document.documentElement.style.setProperty('--highlight-color', high);
+            if (localStorage.getItem('showLogo') === 'false') document.getElementById('app-logo').style.display = 'none';
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('service-worker.js').catch(err => {
+                    console.warn('Service worker registration failed (app will still work online):', err);
+                });
+            }
+        });
+
+        loadUiState();
+        if (uiState.calendarCollapsed) {
+            document.querySelector('.calendar-section').classList.add('collapsed');
+            document.getElementById('calCollapseBtn').textContent = '▸';
+            document.getElementById('calCollapseBtn').title = 'Expand calendar';
+        }
+
+        renderCalendar();
+    </script>
+</body>
+</html>

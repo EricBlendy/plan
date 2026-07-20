@@ -1,7 +1,8 @@
 {
   "name": "Planner",
   "short_name": "Planner",
-  "start_url": "./index.htm",
+  "start_url": "/plan/index.htm",
+  "scope": "/plan/",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",

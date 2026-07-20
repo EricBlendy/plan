@@ -1,5 +1,5 @@
 // Bump this whenever index.htm changes, so old caches get replaced.
-const CACHE_NAME = 'task-planner-shell-v7';
+const CACHE_NAME = 'task-planner-shell-v8';
 
 // The files needed to load the app with zero connectivity.
 // If you rename index.htm, update this list AND manifest.json's start_url to match.
